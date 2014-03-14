@@ -1,0 +1,55 @@
+A Tool for Encryption and Integrity Verification
+	——cp command modify
+
+NAME
+	cp -- copy files
+	SYNOPSIS
+		cp [-option] source_file target_file
+		cp [-option] source_file ... target_directory
+DESCRIPTION
+	In the first synopsis form, the cp utility copies the contents of the source_file to the target_file.；overwrite the target file if it already exists;
+					
+	In the second synopsis form, the contents of each named source_file is copied to the destination target_directory. The names of the files themselves are not changed.
+						
+	If cp detects an attempt to copy a file to itself, the copy will fail.
+							
+	For each destination file that already exists, its contents are overwritten if permissions allow.
+								
+	In the second synopsis form, target_directory must exist unless there is only one named source_file which is a directory and the -R flag is specified.
+	
+
+OPTIONS
+-r|-R	
+	If source_file designates a directory, cp copies the directory and the entire subtree connected at that point. If the target directory already exists, the contents of the directory are copied rather than the directory itself.
+								 
+	In -r|-R mode, cp will continue copying even if errors are detected.
+
+
+-u|-U	
+	copy only when the SOURCE file is newer than the destination file or when the destination file is missing；Judge by the ctime in linux;
+								
+	
+-h|-H Or undefined	
+	output the help information to the stand output stream;
+								
+	
+-c|-C key	
+	crypt the specified files with key；
+
+
+-x|-X key	
+	decrypt the specified files with key；
+
+
+-m	
+	Copy files and print the md5 check code;
+
+-M	
+	Recomputed the md5 code and not do copy actions; If –c key is not given, compute the origin file md5 code;
+
+	
+--	End of configure Param
+									
+
+EXIT STATUS
+	The cp utility exits 0 on success, and >0 if an error occurs.
