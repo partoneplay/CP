@@ -16,11 +16,11 @@
 
 示例
 eg1 : xcp dir1 dir2
-	未指定-r|--recursive参数, 拷贝失败。
+	未指定-r|--recursive参数, 取消操作。
 eg2 : xcp file1... dir1... Dir
-	未指定-r|--recursive参数, 仅文件成功拷贝, 文件夹给出警告信息。
+	未指定-r|--recursive参数, 仅文件成功拷贝, 文件夹给出警告信息, Dir必须存在，否则file拷贝失败。
 eg3 : xcp file1... Dir
-	拷贝文件到Dir路径下, 如果Dir路径不存在，则创建，创建失败取消操作。
+	拷贝文件到Dir路径下, Dir目录必须存在
 eg4 : xcp -r|--recursive dir1 dir2
 	递归拷贝dir1路径下的所有内容到dir2文件夹下; dir2路径不存在则创建, 创建失败取消操作。
 eg5 : xcp -r|--recursive dir1... Dir

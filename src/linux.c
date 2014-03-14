@@ -1,7 +1,5 @@
 #include "linux.h"
 
-#define debug printf
-
 /**
 struct stat 
 {
@@ -30,20 +28,20 @@ struct dirent {
 */
 
 
-int isDir(const char* path)
+int isDir(const char *path)
 {
 	struct stat st;
 	if (stat(path, &st) == -1)
-		return -1;
-	return S_ISDIR(st.st_mode & S_IFMT);
+		return RET_ERROR;
+	return S_ISDIR(st.st_mode & S_IFMT) > 0 ? RET_YES : RET_NO;
 }
+
 
 off_t getSize(const char *path)
 {
 	struct stat st;
 	if (stat(path, &st) == -1)
-		fprintf(stderr, "Size '%s' : %s\n", path, strerror(errno));
-		return 0;
+		return RET_ERROR;
 	return st.st_size;
 }
 
@@ -51,7 +49,7 @@ mode_t getMode(const char *path)
 {
 	struct stat st;
 	if (stat(path, &st) == -1)
-		return 0;
+		return RET_ERROR;
 	return st.st_mode;
 }
 
@@ -59,74 +57,67 @@ time_t getCTime(const char *path)
 {
 	struct stat st;
 	if (stat(path, &st) == -1)
-		return 0;
+		return RET_ERROR;
 	return st.st_ctime;
 }
 
 
-int createDir(const char* path, mode_t mode)
+int createDir(const char *path, mode_t mode)
 {
 	if (mkdir(path, mode) == -1 && errno != EEXIST)
-	{
-		fprintf(stderr, "Create dir '%s' Fail : %s\n", path, strerror(errno));
-		return -1;
-	}
-	debug("Create Dir '%s' Complete\n", path);
-	return 0;
+		return RET_ERROR;
+	return RET_YES;
 }
 
 
-int copyFile(const char* srcPath, const char* destPath)
+int copyFile(const char *srcFile, const char *destPath, int x_kind)
 {
 	FILE *fin, *fout;
+	int index = 0;
 	size_t readSize, len;
-	char filename[MAX_LEN] = "";
-	char newPath[MAX_LEN] = "";
-	char buf[BUF_SIZE];
+	char buf[BUF_SIZE] = "", filename[NAME_MAX] = "", newFile[PATH_MAX] = "";
+	char *tmp;
 
-	debug("Copy file '%s' to '%s'\n", srcPath, destPath);
-
-	// deal with srcPath
-	if (access(srcPath, R_OK) == -1)
+	if (strchr(srcFile, '/') != NULL)
 	{
-		fprintf(stderr, "Read '%s' : %s\n", srcPath, strerror(errno));
-		return -1;
+		tmp = strrchr(srcFile, '/') + 1;
+		memcpy(filename, tmp, strlen(tmp));
 	}
-	if (strchr(srcPath, '/'))
-		strcpy(filename, strrchr(srcPath, '/') + 1);
-	else
-		strcpy(filename, srcPath);
-
-	// deal with destPath
-	if (isDir(destPath) > 0 && access(destPath, F_OK) == -1)
+	if (x_kind == X_ENCRYPT)
+		strcat(filename, EXT_NAME);
+	else if (x_kind == X_DECRYPR)
 	{
-		fprintf(stderr, "Dir '%s' : %s\n", destPath, strerror(errno));
-		return -1;	
+		strcpy(buf, EXT_NAME);
+		len = strlen(buf);
+		for (index = strlen(filename) - 1; index )
 	}
-	strcpy(newPath, destPath);
-	if (isDir(newPath) > 0)
+		;// 去除文件后缀名
+
+
+
+	len = strlen(destPath);
+	memcpy(newFile, destPath, len);
+	if (isDir(destPath) == RET_YES)
 	{
-		len = strlen(newPath);
-		if (len + strlen(filename) >= MAX_LEN - 1)
+		if (access(destPath, F_OK) == -1)
+			return RET_ERROR;
+		else
 		{
-			fprintf(stderr, "Too long : '%s'\n", destPath);
-			return -1;
+			// todo;
 		}
-		if (newPath[len - 1] != '/')
-			newPath[len] = '/';
-		strcat(newPath, filename);
 	}
 
-	debug("Open '%s' to read\nOpen '%s' to write\n", srcPath, newPath);
-	
+	// srcFile can not be read or destFile can not be write
+	if (access(srcFile, R_OK) == -1 || access(newFile, W_OK) == -1)
+		return RET_ERROR;
+
 	fin = fopen(srcPath, "r");
-	fout = fopen(newPath, "w");
+	fout = fopen(newFile, "w");
 	if (fin == NULL || fout == NULL)
 	{
 		if (fin != NULL)
 			fclose(fin);
-		debug("Fin : %p  Fout : %p\n", fin, fout);
-		return -1;
+		return RET_ERROR;
 	}
 
 	while ((readSize = fread(buf, 1, BUF_SIZE, fin)) > 0)
@@ -137,49 +128,40 @@ int copyFile(const char* srcPath, const char* destPath)
 	fclose(fin);
 	fclose(fout);
 
-	// update the file mode
-	chmod(newPath, getMode(srcPath));
+	// update the file protected mode
+	chmod(newFile, getMode(srcPath));
 
-	debug("Copy file '%s' to '%s' Complete\n", srcPath, destPath);
-
-	return 0;
+	return RET_YES;
 }
 
 
-int copyDir(const char* srcDir, const char* destDir)
+int copyDir(const char *srcPath, const char *destDir)
 {
+	int ret;
 	DIR *dir;
 	struct dirent *pdt;
-	int ret;
+	char srcFile[PATH_MAX] = "", destFile[PATH_MAX] = "";
+
 	size_t srcDirLen, destDirLen, len;
-	char srcPath[MAX_LEN] = "", destPath[MAX_LEN] = "";
-	char srcFile[MAX_LEN] = "", destFile[MAX_LEN] = "";
+	char srcPath[PATH_LEN] = "", destPath[PATH_LEN] = "";
+	char srcFile[PATH_LEN] = "", destFile[PATH_LEN] = "";
 
-	srcDirLen = strlen(srcDir);
-	destDirLen = strlen(destDir);
-	if (srcDirLen >= MAX_LEN - 1 || destDirLen >= MAX_LEN - 1)
+	
+	ret = isDir(srcPath);
+	if (ret == RET_NO)
 	{
-		fprintf(stderr, "Too long : '%s' to '%s'\n", srcDir, destDir);
-		return -1;
+
+		return copyFile(srcPath, destDir);
 	}
+	else if (ret == RET_ERROR)
+		return RET_ERROR;
 
-	debug("Copy dir '%s' to '%s'\n", srcDir, destDir);
+	dir = opendir(srcPath);
+	if (createDir(destDir, getMode(srcDir)) == RET_ERROR)
+		return RET_ERROR;	
 
-	ret = isDir(srcDir);
-	if (ret == 0)
-		return copyFile(srcDir, destDir);
-	else if (ret == -1)
-	{
-		fprintf(stderr, "'%s' : %s\n", srcDir, strerror(errno));
-		return -1;
-	}
-
-	dir = opendir(srcDir);
-	if (createDir(destDir, getMode(srcDir)) == -1)
-		return -1;	
-
-	bzero(srcPath, MAX_LEN);
-	bzero(destPath, MAX_LEN);
+	bzero(srcPath, PATH_LEN);
+	bzero(destPath, PATH_LEN);
 	strcpy(srcPath, srcDir);
 	strcpy(destPath, destDir);
 	if (srcPath[srcDirLen - 1] != '/')
@@ -189,14 +171,14 @@ int copyDir(const char* srcDir, const char* destDir)
 	while ((pdt = readdir(dir)) != NULL)
 	{
 		len = strlen(pdt->d_name);
-		if (srcDirLen + len >= MAX_LEN - 1 || destDirLen + len >= MAX_LEN - 5)
+		if (srcDirLen + len >= PATH_LEN - 1 || destDirLen + len >= PATH_LEN - 5)
 		{
 			fprintf(stderr, "Too long : '%s%s' to '%s%s%s'\n", srcPath, pdt->d_name, destDir, pdt->d_name, EXT);
 			continue;
 		}
 	
-		bzero(srcFile, MAX_LEN);
-		bzero(destFile, MAX_LEN);
+		bzero(srcFile, PATH_LEN);
+		bzero(destFile, PATH_LEN);
 
 		strcpy(srcFile, srcPath);
 		strcat(srcFile, pdt->d_name);
