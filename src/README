@@ -1,55 +1,53 @@
-A Tool for Encryption and Integrity Verification
-	——cp command modify
+一种文件加密与完整性验证工具
 
-NAME
-	cp -- copy files
-	SYNOPSIS
-		cp [-option] source_file target_file
-		cp [-option] source_file ... target_directory
-DESCRIPTION
-	In the first synopsis form, the cp utility copies the contents of the source_file to the target_file.；overwrite the target file if it already exists;
-					
-	In the second synopsis form, the contents of each named source_file is copied to the destination target_directory. The names of the files themselves are not changed.
-						
-	If cp detects an attempt to copy a file to itself, the copy will fail.
-							
-	For each destination file that already exists, its contents are overwritten if permissions allow.
-								
-	In the second synopsis form, target_directory must exist unless there is only one named source_file which is a directory and the -R flag is specified.
-	
+用法
+	xcp [选项]... 文件
+	xcp [选项]... 源文件 目标文件
+	xcp [选项]... 源文件... 目录
+	路径是否以路径分割符(Linux下'/', Windows下'\')结束，没有任何影响。
+	将源文件或多个源文件复制到目标目录, 如果存在同名文件，则在权限允许的情况下覆盖； 
 
-OPTIONS
--r|-R	
-	If source_file designates a directory, cp copies the directory and the entire subtree connected at that point. If the target directory already exists, the contents of the directory are copied rather than the directory itself.
-								 
-	In -r|-R mode, cp will continue copying even if errors are detected.
+长选项必须使用的参数对于短选项时也是必须使用的。
+	-r, --recursive         	递归复制目录及其子目录内的所有内容
+	-u, --update            	增量拷贝，只复制源文件比目标文件新或者目标文件丢失的文件
+	-e, --encrypt 密匙      		使用指定密匙对拷贝的文件进行加密
+	-d, --decrypt 密匙      		使用指定密匙对拷贝的文件进行解密
+	-c, --check             	对指定文件进行校验, 不进行拷贝操作
 
-
--u|-U	
-	copy only when the SOURCE file is newer than the destination file or when the destination file is missing；Judge by the ctime in linux;
-								
-	
--h|-H Or undefined	
-	output the help information to the stand output stream;
-								
-	
--c|-C key	
-	crypt the specified files with key；
+示例
+eg1 : xcp dir1 dir2
+	未指定-r|--recursive参数, 拷贝失败。
+eg2 : xcp file1... dir1... Dir
+	未指定-r|--recursive参数, 仅文件成功拷贝, 文件夹给出警告信息。
+eg3 : xcp file1... Dir
+	拷贝文件到Dir路径下, 如果Dir路径不存在，则创建，创建失败取消操作。
+eg4 : xcp -r|--recursive dir1 dir2
+	递归拷贝dir1路径下的所有内容到dir2文件夹下; dir2路径不存在则创建, 创建失败取消操作。
+eg5 : xcp -r|--recursive dir1... Dir
+	功能相当于多次执行xcp -r|--recursive dir* Dir; 如果Dir路径不存在，则创建，创建失败取消操作。
+eg6 : xcp -u|--update ... ...
+	增量拷贝
+eg7 : xcp -e|--encrypt pkey ... ...
+	拷贝过程中使用pkey对待拷贝的文件进行加密, 加密后的文件追加后缀名.cxc。
+eg8 : xcp -d|--decrypt pkey ... ...
+	拷贝过程中使用pkey只对后缀名为.cxc的文件进行解密操作，其他文件原样拷贝。
+eg9 : xcp -c|--check ...
+	对指定文件中以.cxc为后缀的文件进行校验, 删除校验失败的文件。
 
 
--x|-X key	
-	decrypt the specified files with key；
+指定-r|--recursive参数会对传入的路径信息进行递归操作;
+指定-u|--update参数会对传入的路径信息进行增量操作;
+部分参数不可联合使用(以短选项为例), 列举如下:
+1. -e,-d不可同时使用
+2. -c选项只可单独使用或与-d参数联合使用(先进行校验操作, 再做解密拷贝处理)
+
+处理流程
+传入的路径信息 -> 通配符处理 -> 递归,增量处理 -> 实际处理的路径信息 -> 加密解密校验拷贝等操作;
 
 
--m	
-	Copy files and print the md5 check code;
-
--M	
-	Recomputed the md5 code and not do copy actions; If –c key is not given, compute the origin file md5 code;
-
-	
---	End of configure Param
-									
-
-EXIT STATUS
-	The cp utility exits 0 on success, and >0 if an error occurs.
+加密文件结构
+文件头: 20 Bytes;
+	前16 Bytes : 源文件加密后内容的md5校验码(16位长);
+	后4 Bytes : 文件头的checksum;
+文件data域 : 
+	源文件加密后的内容;
