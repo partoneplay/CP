@@ -1,7 +1,7 @@
 #ifndef LINUX_H
 #define LINUX_H
 
-#include "global.h"
+#include "os.h"
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -23,6 +23,7 @@ time_t getCTime(const char *path);
 
 int createDir(const char *path, mode_t mode);
 int copyFile(const char *srcFile, const char *destPath, int x_kind);
-int copyDir(const char *srcPath, const char *destDir);
+int copyDir(const char *srcPath, const char *destDir, int x_kind);
+
 
 #endif

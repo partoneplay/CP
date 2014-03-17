@@ -73,7 +73,7 @@ int createDir(const char *path, mode_t mode)
 int copyFile(const char *srcFile, const char *destPath, int x_kind)
 {
 	FILE *fin, *fout;
-	int index = 0;
+	int ret = 0;
 	size_t readSize, len;
 	char buf[BUF_SIZE] = "", filename[NAME_MAX] = "", newFile[PATH_MAX] = "";
 	char *tmp;
@@ -83,17 +83,11 @@ int copyFile(const char *srcFile, const char *destPath, int x_kind)
 		tmp = strrchr(srcFile, '/') + 1;
 		memcpy(filename, tmp, strlen(tmp));
 	}
-	if (x_kind == X_ENCRYPT)
-		strcat(filename, EXT_NAME);
-	else if (x_kind == X_DECRYPR)
-	{
-		strcpy(buf, EXT_NAME);
-		len = strlen(buf);
-		for (index = strlen(filename) - 1; index )
-	}
-		;// 去除文件后缀名
 
-
+	ret = dealExt(filename, x_kind);
+	// skip the non-encrypt files
+	if (ret == X_NONE && x_kind == X_DECRYPT)
+		return RET_NO;
 
 	len = strlen(destPath);
 	memcpy(newFile, destPath, len);
@@ -103,20 +97,26 @@ int copyFile(const char *srcFile, const char *destPath, int x_kind)
 			return RET_ERROR;
 		else
 		{
-			// todo;
+			if (newFile[len - 1] != '/')
+				newFile[len] = '/';
+			strcat(newFile, filename);
 		}
 	}
 
-	// srcFile can not be read or destFile can not be write
-	if (access(srcFile, R_OK) == -1 || access(newFile, W_OK) == -1)
-		return RET_ERROR;
+	// prevent copy self
+	if (strcmp(srcFile, newFile) == 0)
+	{
+		fprintf(stderr, "Warning : Try to copy self '%s'\n", srcFile);
+		return RET_NO;
+	}
 
-	fin = fopen(srcPath, "r");
+	fin = fopen(srcFile, "r");
 	fout = fopen(newFile, "w");
 	if (fin == NULL || fout == NULL)
 	{
 		if (fin != NULL)
 			fclose(fin);
+		fprintf(stderr, "Fail to copy '%s'\n", srcFile);
 		return RET_ERROR;
 	}
 
@@ -129,77 +129,60 @@ int copyFile(const char *srcFile, const char *destPath, int x_kind)
 	fclose(fout);
 
 	// update the file protected mode
-	chmod(newFile, getMode(srcPath));
+	chmod(newFile, getMode(srcFile));
 
 	return RET_YES;
 }
 
 
-int copyDir(const char *srcPath, const char *destDir)
+int copyDir(const char *srcPath, const char *destDir, int x_kind)
 {
 	int ret;
 	DIR *dir;
 	struct dirent *pdt;
 	char srcFile[PATH_MAX] = "", destFile[PATH_MAX] = "";
+	char srcBase[PATH_MAX] = "", destBase[PATH_MAX] = "";
+	size_t srcBaseLen = 0, destBaseLen = 0;
 
-	size_t srcDirLen, destDirLen, len;
-	char srcPath[PATH_LEN] = "", destPath[PATH_LEN] = "";
-	char srcFile[PATH_LEN] = "", destFile[PATH_LEN] = "";
-
-	
 	ret = isDir(srcPath);
 	if (ret == RET_NO)
-	{
-
-		return copyFile(srcPath, destDir);
-	}
+		return copyFile(srcPath, destDir, x_kind);
 	else if (ret == RET_ERROR)
 		return RET_ERROR;
 
 	dir = opendir(srcPath);
-	if (createDir(destDir, getMode(srcDir)) == RET_ERROR)
+	if (createDir(destDir, getMode(srcPath)) == RET_ERROR)
 		return RET_ERROR;	
 
-	bzero(srcPath, PATH_LEN);
-	bzero(destPath, PATH_LEN);
-	strcpy(srcPath, srcDir);
-	strcpy(destPath, destDir);
-	if (srcPath[srcDirLen - 1] != '/')
-		srcPath[srcDirLen] = '/';
-	if (destPath[destDirLen - 1] != '/')
-		destPath[destDirLen] = '/';
+	srcBaseLen = strlen(srcPath);
+	destBaseLen = strlen(destDir);
+	strcpy(srcBase, srcPath);
+	srcBase[srcBaseLen] = srcPath[srcBaseLen - 1] == '/' ? '\0' : '/';
+	strcpy(destBase, destDir);
+	destBase[destBaseLen] = destDir[destBaseLen - 1] == '/' ? '\0' : '/';
 	while ((pdt = readdir(dir)) != NULL)
 	{
-		len = strlen(pdt->d_name);
-		if (srcDirLen + len >= PATH_LEN - 1 || destDirLen + len >= PATH_LEN - 5)
-		{
-			fprintf(stderr, "Too long : '%s%s' to '%s%s%s'\n", srcPath, pdt->d_name, destDir, pdt->d_name, EXT);
-			continue;
-		}
-	
-		bzero(srcFile, PATH_LEN);
-		bzero(destFile, PATH_LEN);
+		memset(srcFile, 0, PATH_MAX);
+		memset(destFile, 0, PATH_MAX);
 
-		strcpy(srcFile, srcPath);
+		strcpy(srcFile, srcBase);
 		strcat(srcFile, pdt->d_name);
-		strcpy(destFile, destPath);
+		strcpy(destFile, destBase);
 		strcat(destFile, pdt->d_name);
-		
+
 		ret = isDir(srcFile);
-		if (ret > 0)
+		if (ret == RET_YES)
 		{
 			if (strcmp(strrchr(srcFile, '/'), "/.") != 0 && strcmp(strrchr(srcFile, '/'), "/..") != 0)
-				copyDir(srcFile, destFile);
+				copyDir(srcFile, destFile, x_kind);
 		}
-		else if (ret == 0)
+		else if (ret == RET_NO)
 		{
-			strcat(destFile, EXT);
-			copyFile(srcFile, destFile);
+			dealExt(destFile, x_kind);
+			copyFile(srcFile, destFile, x_kind);
 		}
-		else
-			return -1;
 	}
 	closedir(dir);
 
-	return 0;
+	return RET_YES;
 }

@@ -27,14 +27,8 @@ void help(const char *opt)
 
 int main(int argc, char **argv)
 {
-	if (access(argv[1], W_OK) == -1)
-		printf ("OK");
-	else
-		printf("No");
-
-	#ifndef int
-		printf("int");
-	#endif
+	copyDir(argv[1], argv[2], X_DECRYPT);
+	
 	//printf("%ld\n", getCTime(argv[1]));
 	/*
 	// command line 

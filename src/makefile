@@ -1,2 +1,2 @@
 all:
-	gcc main.c linux.c -o xcp
+	gcc main.c os.c linux.c -o xcp
