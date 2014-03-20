@@ -3,27 +3,27 @@
 /**
 struct stat 
 {
-	dev_t     st_dev;     	// ID of device containing file
-	ino_t     st_ino;     	// inode number
-	mode_t    st_mode;    	// protection
+	dev_t	 st_dev;	 	// ID of device containing file
+	ino_t	 st_ino;	 	// inode number
+	mode_t	st_mode;		// protection
 	nlink_t   st_nlink;   	// number of hard links
-	uid_t     st_uid;     	// user ID of owner
-	gid_t     st_gid;     	// group ID of owner
-	dev_t     st_rdev;    	// device ID (if special file)
-	off_t     st_size;    	// total size, in bytes
+	uid_t	 st_uid;	 	// user ID of owner
+	gid_t	 st_gid;	 	// group ID of owner
+	dev_t	 st_rdev;		// device ID (if special file)
+	off_t	 st_size;		// total size, in bytes
 	blksize_t st_blksize; 	// blocksize for file system I/O
 	blkcnt_t  st_blocks;  	// number of 512B blocks allocated
-	time_t    st_atime;   	// time of last access
-	time_t    st_mtime;   	// time of last modification
-	time_t    st_ctime;   	// time of last status change
+	time_t	st_atime;   	// time of last access
+	time_t	st_mtime;   	// time of last modification
+	time_t	st_ctime;   	// time of last status change
 };
 
 struct dirent {
-    ino_t          d_ino;       	inode number
-    off_t          d_off;       	offset to the next dirent
-    unsigned short d_reclen;    	length of this record
-    unsigned char  d_type;      	type of file; not supported by all file system types
-    char           d_name[256]; 	filename
+	ino_t		  d_ino;	   	inode number
+	off_t		  d_off;	   	offset to the next dirent
+	unsigned short d_reclen;		length of this record
+	unsigned char  d_type;	  	type of file; not supported by all file system types
+	char		   d_name[256]; 	filename
 };
 */
 
@@ -35,7 +35,7 @@ int dealExt(char *filename, int x_kind)
 	len = strlen(filename);
 	extlen = strlen(EXT_NAME);
 
-	if (len <= extlen)
+	if (len <= extlen && x_kind == X_DECRYPT)
 		return X_NONE;
 
 	if (x_kind == X_ENCRYPT)
@@ -105,7 +105,7 @@ int createDir(const char *path, mode_t mode)
 }
 
 
-int copyFile(const char *srcFile, const char *destPath, int x_kind)
+int copyFile(const char *srcFile, const char *destPath, int x_kind, const char *key)
 {
 	FILE *fin, *fout;
 	int ret = 0;
@@ -118,8 +118,8 @@ int copyFile(const char *srcFile, const char *destPath, int x_kind)
 		tmp = strrchr(srcFile, '/') + 1;
 		memcpy(filename, tmp, strlen(tmp));
 	}
-
 	ret = dealExt(filename, x_kind);
+
 	// skip the non-encrypt files
 	if (ret == X_NONE && x_kind == X_DECRYPT)
 		return RET_NO;
@@ -137,7 +137,13 @@ int copyFile(const char *srcFile, const char *destPath, int x_kind)
 			strcat(newFile, filename);
 		}
 	}
-
+	else if (x_kind == X_ENCRYPT)
+	{
+		tmp = strrchr(newFile, '.');
+		if (tmp == NULL || strcmp(tmp, EXT_NAME) != 0)
+			strcat(newFile, EXT_NAME);
+	}
+printf("'%s' to '%s'\n", srcFile, newFile);
 	// prevent copy self
 	if (strcmp(srcFile, newFile) == 0)
 	{
@@ -145,23 +151,20 @@ int copyFile(const char *srcFile, const char *destPath, int x_kind)
 		return RET_NO;
 	}
 
-	fin = fopen(srcFile, "r");
-	fout = fopen(newFile, "w");
-	if (fin == NULL || fout == NULL)
+	switch (x_kind)
 	{
-		if (fin != NULL)
-			fclose(fin);
-		fprintf(stderr, "Fail to copy '%s'\n", srcFile);
-		return RET_ERROR;
+		case X_NONE :
+			printf("None\n"); 
+			break;
+		case X_ENCRYPT:
+			X_encrypt(srcFile, newFile, key);
+			break;
+		case X_DECRYPT:
+			X_decrypt(srcFile, newFile, key);
+			break;
+		default:
+			break;
 	}
-
-	while ((readSize = fread(buf, 1, BUF_SIZE, fin)) > 0)
-	{
-		fwrite(buf, 1, readSize, fout);
-		bzero(buf, BUF_SIZE);
-	}
-	fclose(fin);
-	fclose(fout);
 
 	// update the file protected mode
 	chmod(newFile, getMode(srcFile));
@@ -170,7 +173,7 @@ int copyFile(const char *srcFile, const char *destPath, int x_kind)
 }
 
 
-int copyDir(const char *srcPath, const char *destDir, int x_kind)
+int copyDir(const char *srcPath, const char *destDir, int x_kind, const char *key)
 {
 	int ret;
 	DIR *dir;
@@ -181,7 +184,7 @@ int copyDir(const char *srcPath, const char *destDir, int x_kind)
 
 	ret = isDir(srcPath);
 	if (ret == RET_NO)
-		return copyFile(srcPath, destDir, x_kind);
+		return copyFile(srcPath, destDir, x_kind, key);
 	else if (ret == RET_ERROR)
 		return RET_ERROR;
 
@@ -209,12 +212,12 @@ int copyDir(const char *srcPath, const char *destDir, int x_kind)
 		if (ret == RET_YES)
 		{
 			if (strcmp(strrchr(srcFile, '/'), "/.") != 0 && strcmp(strrchr(srcFile, '/'), "/..") != 0)
-				copyDir(srcFile, destFile, x_kind);
+				copyDir(srcFile, destFile, x_kind, key);
 		}
 		else if (ret == RET_NO)
 		{
 			dealExt(destFile, x_kind);
-			copyFile(srcFile, destFile, x_kind);
+			copyFile(srcFile, destFile, x_kind, key);
 		}
 	}
 	closedir(dir);

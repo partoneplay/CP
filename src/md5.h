@@ -49,10 +49,10 @@ extern "C" {
 #endif
 
 	void MD5_Init(MD5Context *context);
-	void MD5_Update(MD5Context *context, unsigned char *buf, int len);
+	void MD5_Update(MD5Context *context, const unsigned char *buf, int len);
 	void MD5_Final(MD5Context *context, unsigned char digest[16]);
-	
-	int MD5_File(const char *filename, unsigned char digest[16]);
+	void MD5(const char *str, unsigned char digest[16]);
+	int MD5_File(const char *filename, unsigned char digest[16], const char *head);
 	
 	void MD5_Str(const unsigned char digest[16], char str[33]);
 

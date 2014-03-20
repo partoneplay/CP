@@ -29,38 +29,9 @@ void help(const char *opt)
 
 int main(int argc, char **argv)
 {
-	MD5Context context;
-	unsigned char digest[16];
-	char str[33];
-
-	AES_KEY key;
-	char *msg = "Hello World";
-	char ret[16] = "";
-
-	// test copy in linux
-//	copyDir(argv[1], argv[2], X_DECRYPT);
+	copyDir(argv[1], argv[2], X_ENCRYPT, "Key");
+	copyDir(argv[3], argv[4], X_DECRYPT, "Key");
 	
-	// test md5
-	MD5_Init(&context);
-	MD5_Update(&context, "Hello World", strlen("Hello World"));
-	MD5_Final(&context, digest);
-	MD5_Str(digest, str);
-	if (strcmp(str, "b10a8db164e0754105b7a99be72e3fe5") == 0)
-		printf("MD5 OK\n");
-	else 
-		printf("MD5 Wrong\n");
-
-	// test aes
-    AES_set_encrypt_key("aes key", 128, &key);
-	AES_encrypt((unsigned char*)msg, ret, &key);
-    AES_set_decrypt_key("aes key", 128, &key);
-    AES_decrypt((unsigned char*)ret, ret, &key);
-    if (memcmp(msg, ret, strlen(msg)) == 0)
-    	printf("AES OK\n");
-    else
-    	printf("AES WRONG\n");
-	// test aes
-
 	//printf("%ld\n", getCTime(argv[1]));
 	/*
 	// command line 

@@ -1,9 +1,8 @@
 #ifndef AES_H
 #define AES_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "os.h"
+#include "md5.h"
 #include <stddef.h>
 
 typedef unsigned int u32;
@@ -27,8 +26,8 @@ extern "C" {
 
 // This should be a hidden type, but EVP requires that the size be known
 struct aes_key_st {
-    unsigned int rd_key[4 *(AES_MAXNR + 1)];
-    int rounds;
+	unsigned int rd_key[4 *(AES_MAXNR + 1)];
+	int rounds;
 };
 typedef struct aes_key_st AES_KEY;
 
@@ -40,6 +39,9 @@ int AES_set_decrypt_key(const unsigned char *userKey, const int bits, AES_KEY *k
 
 void AES_encrypt(const unsigned char *in, unsigned char *out, const AES_KEY *key);
 void AES_decrypt(const unsigned char *in, unsigned char *out, const AES_KEY *key);
+
+int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *userKey);
+int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *userKey);
 
 #ifdef  __cplusplus
 }

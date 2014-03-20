@@ -24,8 +24,8 @@ time_t getCTime(const char *path);
 
 
 int createDir(const char *path, mode_t mode);
-int copyFile(const char *srcFile, const char *destPath, int x_kind);
-int copyDir(const char *srcPath, const char *destDir, int x_kind);
+int copyFile(const char *srcFile, const char *destPath, int x_kind, const char *key);
+int copyDir(const char *srcPath, const char *destDir, int x_kind, const char *key);
 
 
 #endif
