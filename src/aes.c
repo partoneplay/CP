@@ -995,7 +995,7 @@ int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *use
 }
 
 	
-int X_decrypt(const unsigned char *srcFile, unsigned char *newFile, const unsigned char *userKey)
+int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *userKey)
 {
 	AES_KEY key;
 	FILE *fin, *fout;
