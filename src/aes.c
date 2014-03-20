@@ -1005,7 +1005,7 @@ int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *use
 	
 	if (X_check(srcFile, userKey) == RET_NO)
 	{
-		fprintf(stderr, "'%s' Checksum Fail", srcFile);
+		fprintf(stderr, "'%s' Checksum Fail\n", srcFile);
 		return RET_NO;
 	}
 

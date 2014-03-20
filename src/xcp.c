@@ -1,31 +1,5 @@
-#include "linux.h"
+#include "xcp.h"
 
-/**
-struct stat 
-{
-	dev_t	 st_dev;	 	// ID of device containing file
-	ino_t	 st_ino;	 	// inode number
-	mode_t	st_mode;		// protection
-	nlink_t   st_nlink;   	// number of hard links
-	uid_t	 st_uid;	 	// user ID of owner
-	gid_t	 st_gid;	 	// group ID of owner
-	dev_t	 st_rdev;		// device ID (if special file)
-	off_t	 st_size;		// total size, in bytes
-	blksize_t st_blksize; 	// blocksize for file system I/O
-	blkcnt_t  st_blocks;  	// number of 512B blocks allocated
-	time_t	st_atime;   	// time of last access
-	time_t	st_mtime;   	// time of last modification
-	time_t	st_ctime;   	// time of last status change
-};
-
-struct dirent {
-	ino_t		  d_ino;	   	inode number
-	off_t		  d_off;	   	offset to the next dirent
-	unsigned short d_reclen;		length of this record
-	unsigned char  d_type;	  	type of file; not supported by all file system types
-	char		   d_name[256]; 	filename
-};
-*/
 
 int dealExt(char *filename, int x_kind)
 {
@@ -59,6 +33,35 @@ int dealExt(char *filename, int x_kind)
 
 	return x_kind;
 }
+
+
+#if defined(XCP_LINUX)
+/**
+struct stat 
+{
+	dev_t	 st_dev;	 	// ID of device containing file
+	ino_t	 st_ino;	 	// inode number
+	mode_t	st_mode;		// protection
+	nlink_t   st_nlink;   	// number of hard links
+	uid_t	 st_uid;	 	// user ID of owner
+	gid_t	 st_gid;	 	// group ID of owner
+	dev_t	 st_rdev;		// device ID (if special file)
+	off_t	 st_size;		// total size, in bytes
+	blksize_t st_blksize; 	// blocksize for file system I/O
+	blkcnt_t  st_blocks;  	// number of 512B blocks allocated
+	time_t	st_atime;   	// time of last access
+	time_t	st_mtime;   	// time of last modification
+	time_t	st_ctime;   	// time of last status change
+};
+
+struct dirent {
+	ino_t		  d_ino;	   	inode number
+	off_t		  d_off;	   	offset to the next dirent
+	unsigned short d_reclen;		length of this record
+	unsigned char  d_type;	  	type of file; not supported by all file system types
+	char		   d_name[256]; 	filename
+};
+*/
 
 
 int isDir(const char *path)
@@ -102,15 +105,21 @@ int createDir(const char *path, mode_t mode)
 	return RET_YES;
 }
 
+#elif defined(XCP_WIN)
 
-int copyFile(const char *srcFile, const char *destPath, int x_kind, const char *key)
+
+
+#endif
+
+
+int xcpFile(const char *srcFile, const char *destPath, int x_kind, const char *key)
 {
 	FILE *fin, *fout;
 	int ret = 0;
 	time_t ct_src, ct_new;
 	size_t readSize, len;
 	char buf[BUF_SIZE] = "", filename[NAME_MAX] = "", newFile[PATH_MAX] = "";
-	char *tmp;
+	char *tmp, digest[16], md5[33];
 
 	if (strchr(srcFile, '/') != NULL)
 	{
@@ -142,7 +151,7 @@ int copyFile(const char *srcFile, const char *destPath, int x_kind, const char *
 		if (tmp == NULL || strcmp(tmp, EXT_NAME) != 0)
 			strcat(newFile, EXT_NAME);
 	}
-printf("'%s' to '%s'\n", srcFile, newFile);
+
 	// prevent copy self
 	if (strcmp(srcFile, newFile) == 0)
 	{
@@ -162,21 +171,38 @@ printf("'%s' to '%s'\n", srcFile, newFile);
 		}
 	}
 
-	if (x_kind & X_NONE == X_NONE)
-		X_copy(srcFile, newFile);
-	else if (x_kind & X_ENCRYPT)
+	if (x_kind & X_ENCRYPT)
 		X_encrypt(srcFile, newFile, key);
 	else if (x_kind & X_DECRYPT)
 		X_decrypt(srcFile, newFile, key);
+	else if (x_kind & X_CHECK)
+	{
+		if (X_check(srcFile, key) == RET_YES)
+			printf("Check OK.    %s\n", srcFile);
+		else 
+			printf("Check Fail.  %s\n", srcFile);
+	}
+	else if (x_kind & X_MD5SUM)
+	{
+		MD5_File(srcFile, digest);
+		MD5_Str(digest, md5);
+		printf("%s    %s\n", md5, srcFile);
+	}
+	else
+		X_copy(srcFile, newFile);
 
+#if defined(XCP_LINUX)
 	// update the file protected mode
 	chmod(newFile, getMode(srcFile));
+#elif defined(XCP_WIN)
+
+#endif
 
 	return RET_YES;
 }
 
 
-int copyDir(const char *srcPath, const char *destDir, int x_kind, const char *key)
+int xcpDir(const char *srcPath, const char *destDir, int x_kind, const char *key)
 {
 	int ret;
 	DIR *dir;
@@ -187,7 +213,7 @@ int copyDir(const char *srcPath, const char *destDir, int x_kind, const char *ke
 
 	ret = isDir(srcPath);
 	if (ret == RET_NO)
-		return copyFile(srcPath, destDir, x_kind, key);
+		return xcpFile(srcPath, destDir, x_kind, key);
 	else if (ret == RET_ERROR)
 		return RET_ERROR;
 
@@ -215,12 +241,12 @@ int copyDir(const char *srcPath, const char *destDir, int x_kind, const char *ke
 		if (ret == RET_YES)
 		{
 			if (strcmp(strrchr(srcFile, '/'), "/.") != 0 && strcmp(strrchr(srcFile, '/'), "/..") != 0)
-				copyDir(srcFile, destFile, x_kind, key);
+				xcpDir(srcFile, destFile, x_kind, key);
 		}
 		else if (ret == RET_NO)
 		{
 			dealExt(destFile, x_kind);
-			copyFile(srcFile, destFile, x_kind, key);
+			xcpFile(srcFile, destFile, x_kind, key);
 		}
 	}
 	closedir(dir);

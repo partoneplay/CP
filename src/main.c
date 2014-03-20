@@ -1,7 +1,5 @@
-#include "aes.h"
-#include "md5.h"
+#include "xcp.h"
 
-#define KEY_LEN 128
 
 /*
 void help(const char *opt)
@@ -29,9 +27,17 @@ xcp -u|--recusive
 
 int main(int argc, char **argv)
 {
-//	X_encrypt("1.txt", "2.cxc", "Key");
-//	X_decrypt("2.cxc", "3.txt", "Key");
+	xcpDir(argv[1], argv[2], X_ENCRYPT, "Key");
+	xcpDir(argv[3], argv[4], X_DECRYPT, "Key");
 
+/*	X_encrypt(argv[1], argv[2], "key");
+	X_decrypt(argv[2], argv[3], "key");
+	X_copy(argv[1], argv[4]);
+	if (X_check(argv[2], "key") == RET_YES)
+		printf("check OK\n");
+	else 
+		printf("check Wrong\n");
+*/
 //	char digest[16] = "";
 //	char ret[33] = "";
 //	MD5_File(argv[1], digest, 3, "123");
@@ -39,7 +45,7 @@ int main(int argc, char **argv)
 //	printf("%s\n", ret);
 	
 	// command line 
-	int i, x_kind = X_NONE;
+/*	int i, x_kind = X_NONE;
 	char *key;
 
 	int pathnum = 0;
@@ -87,6 +93,6 @@ int main(int argc, char **argv)
 		printf("%s to %s\n", path[i], path[pathnum - 1]);
 	}
 
-	system("pause");
+	*/
 	return 0;
 }

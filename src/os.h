@@ -144,5 +144,10 @@
 #	define OS_UNIX
 #endif
 
+#if defined(OS_WIN32) || defined(OS_WIN64) || defined(OS_MSDOS) || defined(OS_CYGWIN)
+#	define XCP_WIN
+#else 
+#	define XCP_LINUX
+#endif
 
 #endif
