@@ -17,9 +17,10 @@
 #define RET_NO 0
 #define RET_ERROR -1
 
-#define X_NONE 0
-#define X_ENCRYPT 1
-#define X_DECRYPT 2
+#define X_NONE 0		// 0x00
+#define X_ENCRYPT 1 	// 0x01
+#define X_DECRYPT 2 	// 0x02
+#define X_UPDATE 4 		// 0x04
 
 	
 /**

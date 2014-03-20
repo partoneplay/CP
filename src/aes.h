@@ -37,6 +37,7 @@ typedef struct aes_key_st AES_KEY;
 int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *userKey);
 int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *userKey);
 int X_check(const char *filename, const unsigned char *userKey);
+int X_copy(const char *srcFile, const char *newFile);
 
 #ifdef  __cplusplus
 }

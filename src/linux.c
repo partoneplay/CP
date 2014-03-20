@@ -35,15 +35,14 @@ int dealExt(char *filename, int x_kind)
 	len = strlen(filename);
 	extlen = strlen(EXT_NAME);
 
-	if (len <= extlen && x_kind == X_DECRYPT)
+	if (len <= extlen && x_kind & X_DECRYPT)
 		return X_NONE;
 
-	if (x_kind == X_ENCRYPT)
+	if (x_kind & X_ENCRYPT)
 	{
 		strcat(filename, EXT_NAME);
-		return X_ENCRYPT;
 	}
-	else if (x_kind == X_DECRYPT)
+	else if (x_kind & X_DECRYPT)
 	{
 		// the extname must be EXT_NAME
 		strcpy(buf, &filename[len]);
@@ -51,7 +50,6 @@ int dealExt(char *filename, int x_kind)
 		if (strcmp(buf, EXT_NAME) == 0)
 		{
 			memset(&filename[len - extlen], 0, extlen);
-			return X_DECRYPT;
 		}
 		else 
 			return X_NONE;
@@ -109,6 +107,7 @@ int copyFile(const char *srcFile, const char *destPath, int x_kind, const char *
 {
 	FILE *fin, *fout;
 	int ret = 0;
+	time_t ct_src, ct_new;
 	size_t readSize, len;
 	char buf[BUF_SIZE] = "", filename[NAME_MAX] = "", newFile[PATH_MAX] = "";
 	char *tmp;
@@ -121,7 +120,7 @@ int copyFile(const char *srcFile, const char *destPath, int x_kind, const char *
 	ret = dealExt(filename, x_kind);
 
 	// skip the non-encrypt files
-	if (ret == X_NONE && x_kind == X_DECRYPT)
+	if (ret == X_NONE && x_kind & X_DECRYPT)
 		return RET_NO;
 
 	len = strlen(destPath);
@@ -151,20 +150,24 @@ printf("'%s' to '%s'\n", srcFile, newFile);
 		return RET_NO;
 	}
 
-	switch (x_kind)
+	// update copy
+	if (x_kind & X_UPDATE)
 	{
-		case X_NONE :
-			printf("None\n"); 
-			break;
-		case X_ENCRYPT:
-			X_encrypt(srcFile, newFile, key);
-			break;
-		case X_DECRYPT:
-			X_decrypt(srcFile, newFile, key);
-			break;
-		default:
-			break;
+		ct_src = getCTime(srcFile);
+		ct_new = getCTime(newFile);
+		if (ct_new == RET_ERROR || ct_new >= ct_src)
+		{
+			printf("Skip  '%s'\n", srcFile);
+			return RET_NO;
+		}
 	}
+
+	if (x_kind & X_NONE == X_NONE)
+		X_copy(srcFile, newFile);
+	else if (x_kind & X_ENCRYPT)
+		X_encrypt(srcFile, newFile, key);
+	else if (x_kind & X_DECRYPT)
+		X_decrypt(srcFile, newFile, key);
 
 	// update the file protected mode
 	chmod(newFile, getMode(srcFile));

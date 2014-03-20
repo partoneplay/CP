@@ -25,12 +25,22 @@ void help(const char *opt)
 	else if (opt[1] == 'c')
 		printf("Do you mean '-c | --check'\n");
 }
+
+
+
+
 */
 
 int main(int argc, char **argv)
 {
-	copyDir(argv[1], argv[2], X_ENCRYPT, "Key");
-	copyDir(argv[3], argv[4], X_DECRYPT, "Key");
+//	copyDir(argv[1], argv[2], X_ENCRYPT, "Key");
+//	copyDir(argv[3], argv[4], X_DECRYPT, "Key");
+
+	char digest[16] = "";
+	char ret[33] = "";
+	MD5_File(argv[1], digest, 3, "123");
+	MD5_Str(digest, ret);
+	printf("%s\n", ret);
 	
 	//printf("%ld\n", getCTime(argv[1]));
 	/*

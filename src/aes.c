@@ -1059,3 +1059,31 @@ int X_check(const char *filename, const unsigned char *userKey)
 	else
 		return RET_NO;
 }
+
+
+int X_copy(const char *srcFile, const char *newFile)
+{
+	FILE *fin, *fout;
+	char readBuf[BUF_SIZE] = "";
+	size_t readSize = 0;
+	
+	fin = fopen(srcFile, "rb");
+	fout = fopen(newFile, "wb");
+	if (fin == NULL || fout == NULL)
+	{
+		if (fin != NULL)
+			fclose(fin);
+		fprintf(stderr, "Fail to copy '%s'\n", srcFile);
+		return RET_ERROR;
+	}
+
+	while ((readSize = fread(readBuf, 1, BUF_SIZE, fin)) > 0)
+	{
+		fwrite(readBuf, readSize, 1, fout);
+		memset(readBuf, '0', BUF_SIZE);
+	}
+	fclose(fin);
+	fclose(fout);
+
+	return RET_YES;
+}

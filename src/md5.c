@@ -216,8 +216,8 @@ int MD5_File(const char *filename, unsigned char digest[16], size_t offset, cons
 {
 	FILE *file;
 	MD5Context context;
-	size_t len;
-	char buf[BUF_SIZE];
+	size_t readSize;
+	char readBuf[BUF_SIZE];
 
 	if (!(file = fopen(filename, "rb")))
 		return RET_ERROR;
@@ -228,8 +228,8 @@ int MD5_File(const char *filename, unsigned char digest[16], size_t offset, cons
 		MD5_Update(&context, head, strlen(head));
 
 	fseek(file, offset, SEEK_SET);
-	while (len = fread(buf, 1, BUF_SIZE, file))
-		MD5_Update(&context, buf, len);
+	while ((readSize = fread(readBuf, 1, BUF_SIZE, file)) > 0)
+		MD5_Update(&context, readBuf, readSize);
 	fclose(file);
 	MD5_Final(&context, digest);
 	
