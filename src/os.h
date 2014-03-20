@@ -21,11 +21,6 @@
 #define X_ENCRYPT 1
 #define X_DECRYPT 2
 
-
-// excrypt : pad EXT_NAME
-// decrypt : remove the EXT_NAME
-int dealExt(char *filename, int x_kind);
-
 	
 /**
 	The operating system, must be one of: (OS_x)
