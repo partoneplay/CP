@@ -31,17 +31,12 @@ struct aes_key_st {
 };
 typedef struct aes_key_st AES_KEY;
 
-int AES_set_encrypt_key(const unsigned char *userKey, const int bits, AES_KEY *key);
-int AES_set_decrypt_key(const unsigned char *userKey, const int bits, AES_KEY *key);
-
 /* This controls loop-unrolling in aes_core.c */
 #undef FULL_UNROLL
 
-void AES_encrypt(const unsigned char *in, unsigned char *out, const AES_KEY *key);
-void AES_decrypt(const unsigned char *in, unsigned char *out, const AES_KEY *key);
-
 int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *userKey);
-int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *userKey);
+int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *userKey);
+int X_check(const char *filename, const unsigned char *userKey);
 
 #ifdef  __cplusplus
 }

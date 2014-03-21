@@ -958,11 +958,10 @@ int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *use
 	MD5Context context;
 	char buf[16] = "";
 	char readBuf[BUF_SIZE] = "";
-	size_t readSize = 0;
-	int i = 0;
+	size_t i, readSize = 0;
 	
-	fin = fopen(srcFile, "r");
-	fout = fopen(newFile, "w");
+	fin = fopen(srcFile, "rb");
+	fout = fopen(newFile, "wb");
 	if (fin == NULL || fout == NULL)
 	{
 		if (fin != NULL)
@@ -976,7 +975,7 @@ int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *use
 	fwrite(buf, 16, 1, fout);	// file head
 	MD5_Init(&context);
 	MD5_Update(&context, userKey, strlen(userKey));
-	while ((readSize = fread(buf, 1, BUF_SIZE, fin)) > 0)
+	while ((readSize = fread(readBuf, 1, BUF_SIZE, fin)) > 0)
 	{
 		for (i = 0; i < readSize; i += 16)
 		{
@@ -984,11 +983,15 @@ int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *use
 			MD5_Update(&context, buf, 16);
 			fwrite(buf, 16, 1, fout);
 		}
-		memset(buf, '0', BUF_SIZE);
+		memset(readBuf, '0', BUF_SIZE);
 	}
 	MD5_Final(&context, buf);
 	fseek(fout, 0, SEEK_SET);
 	fwrite(buf, 16, 1, fout);
+	fclose(fin);
+	fclose(fout);
+
+	return RET_YES;
 }
 
 	
@@ -996,14 +999,18 @@ int X_decrypt(const unsigned char *srcFile, unsigned char *newFile, const unsign
 {
 	AES_KEY key;
 	FILE *fin, *fout;
-	MD5Context context;
 	char buf[16] = "";
 	char readBuf[BUF_SIZE] = "";
-	size_t readSize = 0;
-	int i = 0;
+	size_t i, readSize = 0;
 	
-	fin = fopen(srcFile, "r");
-	fout = fopen(newFile, "w");
+	if (X_check(srcFile, userKey) == RET_NO)
+	{
+		fprintf(stderr, "'%s' Checksum Fail", srcFile);
+		return RET_NO;
+	}
+
+	fin = fopen(srcFile, "rb");
+	fout = fopen(newFile, "wb");
 	if (fin == NULL || fout == NULL)
 	{
 		if (fin != NULL)
@@ -1013,15 +1020,42 @@ int X_decrypt(const unsigned char *srcFile, unsigned char *newFile, const unsign
 	}
 
 	AES_set_decrypt_key(userKey, 128, &key);
-	memset(buf, 0, 16);
-	fread(buf, 16, 1, fout);	// file head
-	while ((readSize = fread(buf, 1, BUF_SIZE, fin)) > 0)
+	fread(buf, 16, 1, fin);	// file head
+	while ((readSize = fread(readBuf, 1, BUF_SIZE, fin)) > 0)
 	{
-		for (i = 0; i < readSize; i += 16)
+		for (i = 0; i < readSize - 16; i += 16)
 		{
 			AES_decrypt(&readBuf[i], buf, &key);
 			fwrite(buf, 16, 1, fout);
 		}
-		memset(buf, '0', BUF_SIZE);
+		AES_decrypt(&readBuf[i], buf, &key);
+		fwrite(buf, strlen(buf), 1, fout);
+		memset(readBuf, '0', BUF_SIZE);
 	}
+	fclose(fin);
+	fclose(fout);
+
+	return RET_YES;
+}
+
+
+int X_check(const char *filename, const unsigned char *userKey)
+{
+	FILE *file;
+	char buf[16] = "", digest[16] = "";
+
+	file = fopen(filename, "rb");
+	if (file == NULL)
+	{
+		fprintf(stderr, "Fail to check '%s'\n", filename);
+		return RET_ERROR;
+	}
+	fread(buf, 16, 1, file);
+	fclose(file);
+
+	MD5_File(filename, digest, 16, userKey);
+	if (memcmp(buf, digest, 16) == 0)
+		return RET_YES;
+	else
+		return RET_NO;
 }
