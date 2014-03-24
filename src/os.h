@@ -21,6 +21,8 @@
 #define X_ENCRYPT 1 	// 0x01
 #define X_DECRYPT 2 	// 0x02
 #define X_UPDATE 4 		// 0x04
+#define X_CHECK 8		// 0x08
+#define X_MD5SUM 16		// 0x10
 
 	
 /**
