@@ -1,7 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "linux.h"
 #include "aes.h"
 #include "md5.h"
 
@@ -33,14 +29,15 @@ void help(const char *opt)
 
 int main(int argc, char **argv)
 {
-//	copyDir(argv[1], argv[2], X_ENCRYPT, "Key");
-//	copyDir(argv[3], argv[4], X_DECRYPT, "Key");
+	X_encrypt("1.txt", "2.cxc", "Key");
+	X_decrypt("2.cxc", "3.txt", "Key");
+	X_check();
 
-	char digest[16] = "";
-	char ret[33] = "";
-	MD5_File(argv[1], digest, 3, "123");
-	MD5_Str(digest, ret);
-	printf("%s\n", ret);
+//	char digest[16] = "";
+//	char ret[33] = "";
+//	MD5_File(argv[1], digest, 3, "123");
+//	MD5_Str(digest, ret);
+//	printf("%s\n", ret);
 	
 	//printf("%ld\n", getCTime(argv[1]));
 	/*
