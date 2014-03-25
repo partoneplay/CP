@@ -23,7 +23,7 @@ void getName(const char *path, char *name)
 }
 
 // get extName with '.', get '.' if no extName
-void getExtName(const char *path, char extName)
+void getExtName(const char *path, char *extName)
 {
 	char *tmp;
 
@@ -183,6 +183,13 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const char *k
 		if (tmp == NULL || strcmp(tmp, EXT_NAME) != 0)
 			strcat(newFile, EXT_NAME);
 	}
+	else if (x_kind & X_DECRYPT)
+	{
+		len = strlen(EXT_NAME);
+		if (strlen(newFile) <= len)
+			return RET_SKIP;
+		memset(&newFile[strlen(newFile) - len], 0, len);
+	}
 
 	// prevent copy self
 	if (strcmp(srcPath, newFile) == 0)
@@ -205,7 +212,7 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const char *k
 
 	if (x_kind & X_ENCRYPT)
 	{
-		printf("Encrypt '%s' to '%s'\n", srcPath, newFile, key);
+		printf("Encrypt '%s' to '%s'\n", srcPath, newFile);
 		X_encrypt(srcPath, newFile, key);
 	}
 	else if (x_kind & X_DECRYPT)
@@ -214,7 +221,7 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const char *k
 		if (strcmp(extName, EXT_NAME) != 0)
 			return RET_SKIP;
 
-		printf("Decrypt '%s' to '%s' with %s'\n", srcPath, newFile, key);
+		printf("Decrypt '%s' to '%s'\n", srcPath, newFile);
 		X_decrypt(srcPath, newFile, key);
 	}
 	else
@@ -225,7 +232,7 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const char *k
 
 #if defined(XCP_LINUX)
 	// update the file protected mode
-	chmod(newFile, getMode(srcFile));
+	chmod(newFile, getMode(srcPath));
 #elif defined(XCP_WIN)
 
 #endif
@@ -242,7 +249,7 @@ int xcpDir(const char *srcPath, const char *destDir, int x_kind, const char *key
 
 
 #else
-int xcpDir(const char *srcPath, const char *destDir, int x_kind, const char *key)
+int xcpDir(const char *srcPath, const char *destPath, int x_kind, const char *key)
 {
 	DIR *dir;
 	int ret;
@@ -254,7 +261,7 @@ int xcpDir(const char *srcPath, const char *destDir, int x_kind, const char *key
 	
 	ret = isDir(srcPath);
 	if (ret == RET_NO)
-		return xcpFile(srcPath, destDir, x_kind, key);	
+		return xcpFile(srcPath, destPath, x_kind, key);	
 	else if (ret == RET_ERROR)
 		return RET_ERROR;
 	dir = opendir(srcPath);
@@ -262,7 +269,7 @@ int xcpDir(const char *srcPath, const char *destDir, int x_kind, const char *key
 
 	len = strlen(srcPath);
 	strcpy(srcBase, srcPath);
-	srcBase[len] = srcPath[len - 1] == '/' ? '\0' : '/';
+	srcBase[len] = srcPath[len - 1] == PATH_DIV ? '\0' : PATH_DIV;
 
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
 	{
@@ -281,21 +288,22 @@ int xcpDir(const char *srcPath, const char *destDir, int x_kind, const char *key
 			else if (ret == RET_NO)
 				xcpFile(srcFile, NULL, x_kind, key);
 		}
+		closedir(dir);
 
 		return RET_YES;
 	}
 		
-	len = strlen(destDir);
-	strcpy(destBase, destDir);
-	destBase[len] = destDir[len - 1] == '/' ? '\0' : '/';
-	if (isDir(destDir) == RET_YES)
+	len = strlen(destPath);
+	strcpy(destBase, destPath);
+	destBase[len] = destBase[len - 1] == PATH_DIV ? '\0' : PATH_DIV;
+	if (access(destBase, F_OK) == 0)
 	{
 		strcat(destBase, dirName);
 		strcat(destBase, "/");
 	}
 	if (createDir(destBase, getMode(srcPath)) == RET_ERROR)
 	{
-		fprintf(stderr, "Fail to Create Dir '%s' %s\n", destDir, strerror(errno));
+		fprintf(stderr, "Fail to Create Dir '%s' : %s\n", destPath, strerror(errno));
 		return RET_ERROR;
 	}
 	
@@ -316,10 +324,7 @@ int xcpDir(const char *srcPath, const char *destDir, int x_kind, const char *key
 				xcpDir(srcFile, destFile, x_kind, key);
 		}
 		else if (ret == RET_NO)
-		{
-			dealExt(destFile, x_kind);
 			xcpFile(srcFile, destFile, x_kind, key);
-		}
 	}
 	closedir(dir);
 

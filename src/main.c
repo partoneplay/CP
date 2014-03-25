@@ -89,10 +89,11 @@ int main(int argc, char **argv)
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
 		xcpDir(path[pathnum - 1], NULL, x_kind, key);
 	*/
-	xcpDir("1.txt", "2.cxc", X_ENCRYPT, "partoneplay");
-	xcpDir("2.cxc", NULL, X_CHECK, "partoneplay");
-	xcpDir("2.cxc", "3.txt", X_DECRYPT, "partoneplay");
-	xcpDir("1.txt", "3.txt", X_MD5SUM, NULL);
+	xcpDir("a", "b", X_ENCRYPT, "partoneplay");
+	xcpDir("a", NULL, X_CHECK, "partoneplay");
+	xcpDir("b", "c", X_DECRYPT, "partoneplay");
+	xcpDir("a", NULL, X_MD5SUM, NULL);
+	xcpDir("c", NULL, X_MD5SUM, NULL);
 
 	return 0;
 }
