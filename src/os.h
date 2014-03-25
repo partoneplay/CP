@@ -13,10 +13,10 @@
 // path max length
 #define PATH_MAX 1024
 
-#define RET_SKIP 2
-#define RET_YES 1
-#define RET_NO 0
-#define RET_ERROR -1
+#define RET_SKIP 3
+#define RET_YES 2
+#define RET_NO 1
+#define RET_ERROR 0
 
 #define X_NONE 0		// 0x00
 #define X_ENCRYPT 1 	// 0x01

@@ -95,8 +95,22 @@ int main(int argc, char **argv)
 	xcpDir("a", NULL, X_MD5SUM, NULL);
 	xcpDir("c", NULL, X_MD5SUM, NULL);
 	*/
-	TCHAR tch;
-	LPCTSTR lp;
 
+	int i = 0;
+	char name[128];
+	char* path[5] = {
+		"",
+		"1.",
+		"1/11.1",
+		"1/11/",
+		"."
+	};
+	for (i = 0; i < 5; ++i)
+	{
+		getName(path[i], name);
+		printf("Name '%s' => '%s'\n", path[i], name);
+		getExtName(path[i], name);
+		printf("Ext '%s' => '%s'\n", path[i], name);
+	}
 	return 0;
 }

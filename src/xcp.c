@@ -1,17 +1,11 @@
 #include "xcp.h"
 
 
-
-
 #if defined(XCP_WIN)
-#define F_OK 0
-#define access _access
 
 
 #else
-
-#endif
-
+// in linux system
 
 int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigned char *key)
 {
@@ -23,7 +17,10 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 
 	// srcpath must be a regular file
 	if (isReg(srcPath) != RET_YES)
-		return RET_ERROR;
+	{
+		printf("Skip Unregular File '%s'\n", srcPath);
+		return RET_SKIP;
+	}
 	getExtName(srcPath, extName);
 	getName(srcPath, fileName);
 
@@ -50,34 +47,40 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 		return RET_YES;
 	}
 
-
+	// deal with destPath
 	len = strlen(destPath);
 	memcpy(newFile, destPath, len);
 	if (isDir(destPath) == RET_YES)
 	{
 		// the dir must exists
 		if (access(destPath, F_OK) == -1)
+		{
+			fprintf(stderr, "'%s' not Exists\n", destPath);
 			return RET_ERROR;
+		}
 		else
 		{
-			if (newFile[len - 1] != PATH_DIV)
-				newFile[len] = PATH_DIV;
+			newFile[len] = newFile[len - 1] == PATH_DIV ? '\0' : PATH_DIV;
 			strcat(newFile, fileName);
 		}
 	}
 
-	// the encrypted file should have a EXT_NAME
 	if (x_kind & X_ENCRYPT)
 	{
+		// the encrypted file should have a EXT_NAME
 		tmp = strrchr(newFile, '.');
 		if (tmp == NULL || strcmp(tmp, EXT_NAME) != 0)
 			strcat(newFile, EXT_NAME);
 	}
 	else if (x_kind & X_DECRYPT)
 	{
+		// the decrypted file should remove the EXT_NAME
 		len = strlen(EXT_NAME);
 		if (strlen(newFile) <= len)
-			return RET_SKIP;
+		{
+			fprintf(stderr, "Unexcepted Error '%s' too short\n", newFile);
+			return RET_ERROR;
+		}
 		memset(&newFile[strlen(newFile) - len], 0, len);
 	}
 
@@ -120,15 +123,97 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 		X_copy(srcPath, newFile);
 	}
 
-#if defined(XCP_LINUX)
-	// update the file protected mode
 	chmod(newFile, getMode(srcPath));
-#elif defined(XCP_WIN)
+	return RET_YES;
+}
+
+
+int xcpDir(const char *srcPath, const char *destPath, int x_kind, const unsigned char *key)
+{
+	DIR *dir;
+	int ret;
+	size_t len = 0;
+	struct dirent *pdt;
+	char dirName[NAME_MAX] = "";
+	char srcFile[PATH_MAX] = "", destFile[PATH_MAX] = "";
+	char srcBase[PATH_MAX] = "", destBase[PATH_MAX] = "";
+	
+	ret = isDir(srcPath);
+	if (ret == RET_NO)
+		return xcpFile(srcPath, destPath, x_kind, key);	
+	else if (ret == RET_ERROR)
+		return RET_ERROR;
+	dir = opendir(srcPath);
+	getName(srcPath, dirName);
+
+	len = strlen(srcPath);
+	strcpy(srcBase, srcPath);
+	srcBase[len] = srcPath[len - 1] == PATH_DIV ? '\0' : PATH_DIV;
+
+	// for check and md5sum
+	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
+	{
+		while ((pdt = readdir(dir)) != NULL)
+		{
+			memset(srcFile, 0, PATH_MAX);	
+			strcpy(srcFile, srcBase);
+			strcat(srcFile, pdt->d_name);
+		
+			ret = isDir(srcFile);
+			if (ret == RET_YES)
+			{
+				if (strcmp(strrchr(srcFile, '/'), "/.") != 0 && strcmp(strrchr(srcFile, '/'), "/..") != 0)
+					xcpDir(srcFile, NULL, x_kind, key);
+			}
+			else if (ret == RET_NO)
+				xcpFile(srcFile, NULL, x_kind, key);
+		}
+		closedir(dir);
+		return RET_YES;
+	}
+		
+	// deal with destPath
+	len = strlen(destPath);
+	strcpy(destBase, destPath);
+	destBase[len] = destBase[len - 1] == PATH_DIV ? '\0' : PATH_DIV;
+	if (access(destBase, F_OK) == 0)
+	{
+		strcat(destBase, dirName);
+		strcat(destBase, "/");
+	}
+	if (createDir(destBase, getMode(srcPath)) == RET_ERROR)
+	{
+		fprintf(stderr, "Fail to Create Dir '%s' : %s\n", destPath, strerror(errno));
+		return RET_ERROR;
+	}
+	
+	while ((pdt = readdir(dir)) != NULL)
+	{
+		memset(srcFile, 0, PATH_MAX);
+		strcpy(srcFile, srcBase);
+		strcat(srcFile, pdt->d_name);
+
+		memset(destFile, 0, PATH_MAX);
+		strcpy(destFile, destBase);
+		strcat(destFile, pdt->d_name);
+
+		ret = isDir(srcFile);
+		if (ret == RET_YES)
+		{
+			if (strcmp(strrchr(srcFile, '/'), "/.") != 0 && strcmp(strrchr(srcFile, '/'), "/..") != 0)
+				xcpDir(srcFile, destFile, x_kind, key);
+		}
+		else if (ret == RET_NO)
+			xcpFile(srcFile, destFile, x_kind, key);
+	}
+	closedir(dir);
+	return RET_YES;
+}
 
 #endif
 
-	return RET_YES;
-}
+
+
 
 
 #if defined(XCP_WIN)
@@ -180,10 +265,10 @@ int xcpDir(const char *srcPath, const char *destPath, int x_kind, const unsigned
 	}
 
 	
-    char DirSpec[MAX_PATH + 1];// ָ��·��
+    char DirSpec[MAX_PATH + 1];// Ö¸¶¨Â·¾¶
     DWORD dwError;
 
-    strncpy (DirSpec, srcPath, strlen(srcPath) + 1);
+    memcpy (DirSpec, srcPath, strlen(srcPath) + 1);
     strncat (DirSpec, "/*", 3);
 
     hFind = FindFirstFile((DirSpec, &FindFileData);
@@ -197,12 +282,12 @@ int xcpDir(const char *srcPath, const char *destPath, int x_kind, const unsigned
     {
         if (FindFileData.dwFileAttributes != FILE_ATTRIBUTE_DIRECTORY )
         {
-            printf ("����%s ", FindFileData.cFileName);   //�ҵ��ļ�
+            printf ("¡¡¡¡%s ", FindFileData.cFileName);   //ÕÒµ½ÎÄ¼þ
         }
         else if(FindFileData.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY
             && strcmp(FindFileData.cFileName, ".") != 0
             && strcmp(FindFileData.cFileName, "..") != 0)
-        {   //�ҵ�Ŀ¼
+        {   //ÕÒµ½Ä¿Â¼
             char Dir[MAX_PATH + 1];
             strcpy(Dir, srcPath);
             strncat(Dir, "/", 2);
@@ -214,13 +299,13 @@ int xcpDir(const char *srcPath, const char *destPath, int x_kind, const unsigned
         while (FindNextFile(hFind, &FindFileData) != 0)
         {
             if (FindFileData.dwFileAttributes != FILE_ATTRIBUTE_DIRECTORY)
-            {   //�ҵ��ļ�
-                printf ("����%s ", FindFileData.cFileName);
+            {   //ÕÒµ½ÎÄ¼þ
+                printf ("¡¡¡¡%s ", FindFileData.cFileName);
             }
             else if(FindFileData.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY
                 && strcmp(FindFileData.cFileName, ".") != 0
                 && strcmp(FindFileData.cFileName, "..") != 0)
-            { //�ҵ�Ŀ¼
+            { //ÕÒµ½Ä¿Â¼
                 char Dir[MAX_PATH + 1];
                 strcpy(Dir, srcPath);
                 strncat(Dir, "/", 2);
@@ -244,202 +329,16 @@ int xcpDir(const char *srcPath, const char *destPath, int x_kind, const unsigned
 
 
 #else
-int xcpDir(const char *srcPath, const char *destPath, int x_kind, const unsigned char *key)
-{
-	DIR *dir;
-	int ret;
-	size_t len = 0;
-	struct dirent *pdt;
-	char dirName[NAME_MAX] = "";
-	char srcFile[PATH_MAX] = "", destFile[PATH_MAX] = "";
-	char srcBase[PATH_MAX] = "", destBase[PATH_MAX] = "";
-	
-	ret = isDir(srcPath);
-	if (ret == RET_NO)
-		return xcpFile(srcPath, destPath, x_kind, key);	
-	else if (ret == RET_ERROR)
-		return RET_ERROR;
-	dir = opendir(srcPath);
-	getName(srcPath, dirName);
 
-	len = strlen(srcPath);
-	strcpy(srcBase, srcPath);
-	srcBase[len] = srcPath[len - 1] == PATH_DIV ? '\0' : PATH_DIV;
-
-	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
-	{
-		while ((pdt = readdir(dir)) != NULL)
-		{
-			memset(srcFile, 0, PATH_MAX);	
-			strcpy(srcFile, srcBase);
-			strcat(srcFile, pdt->d_name);
-		
-			ret = isDir(srcFile);
-			if (ret == RET_YES)
-			{
-				if (strcmp(strrchr(srcFile, '/'), "/.") != 0 && strcmp(strrchr(srcFile, '/'), "/..") != 0)
-					xcpDir(srcFile, NULL, x_kind, key);
-			}
-			else if (ret == RET_NO)
-				xcpFile(srcFile, NULL, x_kind, key);
-		}
-		closedir(dir);
-
-		return RET_YES;
-	}
-		
-	len = strlen(destPath);
-	strcpy(destBase, destPath);
-	destBase[len] = destBase[len - 1] == PATH_DIV ? '\0' : PATH_DIV;
-	if (access(destBase, F_OK) == 0)
-	{
-		strcat(destBase, dirName);
-		strcat(destBase, "/");
-	}
-	if (createDir(destBase, getMode(srcPath)) == RET_ERROR)
-	{
-		fprintf(stderr, "Fail to Create Dir '%s' : %s\n", destPath, strerror(errno));
-		return RET_ERROR;
-	}
-	
-	while ((pdt = readdir(dir)) != NULL)
-	{
-		memset(srcFile, 0, PATH_MAX);
-		memset(destFile, 0, PATH_MAX);
-
-		strcpy(srcFile, srcBase);
-		strcat(srcFile, pdt->d_name);
-		strcpy(destFile, destBase);
-		strcat(destFile, pdt->d_name);
-
-		ret = isDir(srcFile);
-		if (ret == RET_YES)
-		{
-			if (strcmp(strrchr(srcFile, '/'), "/.") != 0 && strcmp(strrchr(srcFile, '/'), "/..") != 0)
-				xcpDir(srcFile, destFile, x_kind, key);
-		}
-		else if (ret == RET_NO)
-			xcpFile(srcFile, destFile, x_kind, key);
-	}
-	closedir(dir);
-
-	return RET_YES;
-}
 #endif
 
 
 
-// linux windows ��ȫ��Ϊ������ʵ�֣�
+// linux windows ÍêÈ«·ÖÎªÁ½²¿·ÖÊµÏÖ£»
 
 #if defined(XCP_WIN)
 
-// get dir or filename(with extname) without '/'(linux) '\'(windows)
-void getName(const TCHAR *path, TCHAR *name)
-{
-	TCHAR *tmp;
-	TCHAR buf[PATH_MAX] = {};
-	size_t len = 0;
 
-	if (path == NULL || name == NULL) return;
-
-	_tcscpy(buf, path);
-	len = _tcslen(path);
-	if (buf[len - 1] == PATH_DIV)
-		buf[len - 1] = '\0';
-	tmp = _tcsrchr(buf, PATH_DIV);
-	if (tmp == NULL)
-		_tcscpy(name, buf);
-	else
-		_tcscpy(name, tmp + 1);
-}
-
-
-// get extName with '.', get '.' if no extName
-void getExtName(const TCHAR *path, TCHAR *extName)
-{
-	const TCHAR *tmp;
-
-	if (path == NULL || extName == NULL) return;
-
-	tmp = _tcsrchr(path, '.');
-	if (tmp == NULL)
-		_tcscpy(extName, _T("."));
-	else
-		_tcscpy(extName, tmp);
-}
-
-
-void c2w(const char *str, wchar_t *wstr)
-{
-	size_t len = MultiByteToWideChar(CP_ACP, 0, str, -1, 0, 0);;
-	MultiByteToWideChar(CP_ACP, 0, str, -1, wstr, len);
-	wstr[len] = L'\0';
-}
-
-
-void w2c(const wchar_t *wstr, char *str)
-{
-	size_t len = WideCharToMultiByte(CP_ACP, 0, wstr, -1, NULL, 0, NULL, NULL);
-	WideCharToMultiByte(CP_OEMCP, 0, wstr, -1, str, len, NULL, NULL);
-	str[len] = '\0';
-}
-
-
-int getFD(const TCHAR *path, WIN32_FIND_DATA *fd)
-{
-	HANDLE handle = FindFirstFile(path, fd);
-	if (handle == INVALID_HANDLE_VALUE)
-		return RET_ERROR;
-	else
-	{
-		FindClose(handle);
-		return RET_YES;
-	}
-}
-
-
-int isDir(const TCHAR* path, const WIN32_FIND_DATA *fd)
-{
-	if (fd == NULL) return RET_ERROR;
-	return fd->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ? RET_YES : RET_NO;
-}
-
-
-// whether a file(normal or readonly or sparse)
-int isReg(const TCHAR *path, const WIN32_FIND_DATA *fd)
-{
-	if (fd == NULL) return RET_ERROR;
-	return fd->dwFileAttributes & FILE_ATTRIBUTE_NORMAL
-		|| fd->dwFileAttributes & FILE_ATTRIBUTE_READONLY
-		|| fd->dwFileAttributes & FILE_ATTRIBUTE_SPARSE_FILE
-		? RET_YES : RET_NO;
-}
-
-
-// time of last update
-time_t getUpdateTime(const TCHAR *path, const WIN32_FIND_DATA *fd)
-{
-	ULARGE_INTEGER ul;
-	if (fd == NULL) return RET_ERROR;
-		
-	ul.LowPart = fd->ftLastWriteTime.dwLowDateTime;
-	ul.HighPart = fd->ftLastWriteTime.dwHighDateTime;
-	return (long long)(ul.QuadPart - 116444736000000000) / 10000000;
-}
-
-
-// the parent dir must exists
-int createDir(const TCHAR *path)
-{
-	if (CreateDirectory(path, NULL) == 0)
-	{
-		if (GetLastError() == ERROR_ALREADY_EXISTS && PathIsDirectory(path))
-			return RET_YES;
-		else
-			return RET_ERROR;
-	}
-	return RET_YES;
-}
 
 
 int xcpFile(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsigned char *key)
@@ -568,95 +467,7 @@ int xcpFile(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsig
 
 
 #else
-// get dir or filename(with extname) without '/'(linux) '\'(windows)
-void getName(const char *path, char *name)
-{
-	char *tmp;
-	char buf[PATH_MAX];
-	size_t len = 0;
 
-	if (path == NULL || name == NULL) return;
-
-	memset(buf, 0, PATH_MAX);
-	strcpy(buf, path);
-	len = strlen(path);
-	if (buf[len - 1] == PATH_DIV)
-		buf[len - 1] = '\0';
-	tmp = strrchr(buf, PATH_DIV);
-	if (tmp == NULL)
-		strcpy(name, buf);
-	else
-		strcpy(name, tmp + 1);
-}
-
-
-// get extName with '.', get '.' if no extName
-void getExtName(const char *path, char *extName)
-{
-	const char *tmp;
-
-	if (path == NULL || extName == NULL) return;
-
-	tmp = strrchr(path, '.');
-	if (tmp == NULL)
-		strcpy(extName, ".");
-	else
-		strcpy(extName, tmp);
-}
-
-
-// whether a dir
-int isDir(const char *path)
-{
-	struct stat st;
-	if (stat(path, &st) == -1)
-		return RET_ERROR;
-	return S_ISDIR(st.st_mode & S_IFMT) > 0 ? RET_YES : RET_NO;
-}
-
-
-// whether a regular file
-int isReg(const char *path)
-{
-	struct stat st;
-	if (stat(path, &st) == -1)
-		return RET_ERROR;
-	return S_ISREG(st.st_mode & S_IFMT) > 0 ? RET_YES : RET_NO;
-}
-
-
-// file protection
-mode_t getMode(const char *path)
-{
-	struct stat st;
-	if (stat(path, &st) == -1)
-		return RET_ERROR;
-	return st.st_mode;
-}
-
-
-// time of last update
-time_t getUpdateTime(const char *path)
-{
-	struct stat st;
-	if (stat(path, &st) == -1)
-		return RET_ERROR;
-	return st.st_ctime;
-}
-
-
-// the parent dir must exists
-int createDir(const char *path, mode_t mode)
-{
-	if (mkdir(path, mode) == -1)
-	{
-		if (errno == EEXIST && isDir(path) == RET_YES)
-			return RET_YES;
-		else
-			return RET_ERROR;
-	}
-	return RET_YES;
-}
 
 
 #endif
