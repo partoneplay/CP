@@ -9,10 +9,11 @@
 #define BUF_SIZE 1024	// must be 16x
 
 // filename max length
-#define NAME_MAX 255
+#define NAME_MAX 128
 // path max length
-#define PATH_MAX 4096
+#define PATH_MAX 1024
 
+#define RET_SKIP 2
 #define RET_YES 1
 #define RET_NO 0
 #define RET_ERROR -1

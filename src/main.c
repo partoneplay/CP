@@ -27,7 +27,7 @@ xcp -u|--recusive
 
 int main(int argc, char **argv)
 {
-	int i, x_kind = X_NONE, x_update = X_NONE;
+/*	int i, x_kind = X_NONE, x_update = X_NONE;
 	unsigned char *key = NULL;
 
 	int pathnum = 0;
@@ -83,19 +83,16 @@ int main(int argc, char **argv)
 
 	path = &argv[i];
 	pathnum = argc - i;
-
+	
 	for (i = 0; i < pathnum - 1; ++i)
 		xcpDir(path[i], path[pathnum - 1], x_kind, key);
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
 		xcpDir(path[pathnum - 1], NULL, x_kind, key);
-
-
-xcpDir(path[0], path[1], X_ENCRYPT, "partoneplay");
-//xcpDir("f1", "ff2", X_ENCRYPT, "partoneplay");
-//xcpDir("f1", "fff2", X_ENCRYPT, "partoneplay");
-//printf("%d\n", X_check("f2.cxc", "partoneplay"));
-//xcpDir("ff2.cxc", "ff3", X_DECRYPT, "partoneplay");
-//xcpDir("fff2.cxc", "fff3", X_DECRYPT, "partoneplay");
+	*/
+	xcpDir("1.txt", "2.cxc", X_ENCRYPT, "partoneplay");
+	xcpDir("2.cxc", NULL, X_CHECK, "partoneplay");
+	xcpDir("2.cxc", "3.txt", X_DECRYPT, "partoneplay");
+	xcpDir("1.txt", "3.txt", X_MD5SUM, NULL);
 
 	return 0;
 }
