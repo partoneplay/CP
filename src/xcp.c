@@ -9,12 +9,13 @@ int dealExt(char *filename, int x_kind)
 	len = strlen(filename);
 	extlen = strlen(EXT_NAME);
 
-	if (len <= extlen && x_kind & X_DECRYPT)
+	if (len <= extlen && (x_kind & X_DECRYPT || x_kind & X_CHECK))
 		return X_NONE;
 
 	if (x_kind & X_ENCRYPT)
 	{
 		strcat(filename, EXT_NAME);
+		return X_ENCRYPT;
 	}
 	else if (x_kind & X_DECRYPT)
 	{
@@ -28,10 +29,15 @@ int dealExt(char *filename, int x_kind)
 		else 
 			return X_NONE;
 	}
+	else if (x_kind & X_CHECK)
+	{
+		if (strcmp(strrchr(filename, '.'), EXT_NAME) == 0)
+			return X_CHECK;
+		else
+			return X_NONE;
+	}
 	else
 		return X_NONE;
-
-	return x_kind;
 }
 
 
@@ -149,6 +155,27 @@ int createDir(const char *path, mode_t mode)
 	return RET_YES;
 }
 
+void getName(const char *path, char *name)
+{
+	char buf[PATH_MAX];
+	char *tmp;
+	size_t len = 0;
+
+	if (path == NULL)
+		return;
+
+	memset(buf, 0, PATH_MAX);
+	strcpy(buf, path);
+	len = strlen(path);
+	if (buf[len - 1] == '/')
+		buf[len - 1] = '\0';
+	tmp = strrchr(buf, '/');
+	if (tmp == NULL)
+		strcpy(name, buf);
+	else
+		strcpy(name, tmp + 1);
+}
+
 #endif
 
 
@@ -160,6 +187,15 @@ int xcpFile(const char *srcFile, const char *destPath, int x_kind, const char *k
 	char buf[BUF_SIZE] = "", filename[NAME_MAX] = "", newFile[PATH_MAX] = "";
 	char *tmp, digest[16], md5[33];
 
+	// md5 function
+	if (x_kind & X_MD5SUM)
+	{
+		MD5_File(srcFile, digest, 0, NULL);
+		MD5_Str(digest, md5);
+		printf("%s    %s\n", md5, srcFile);
+		return RET_YES;
+	}
+
 	if (strchr(srcFile, '/') != NULL)
 	{
 		tmp = strrchr(srcFile, '/') + 1;
@@ -168,6 +204,20 @@ int xcpFile(const char *srcFile, const char *destPath, int x_kind, const char *k
 	else
 		memcpy(filename, srcFile, strlen(srcFile));
 	ret = dealExt(filename, x_kind);
+
+	// check function
+	if (x_kind & X_CHECK)
+	{
+		// skip the non-encrypt files
+		if (ret == X_NONE)
+			return RET_NO;
+
+		if (X_check(srcFile, key) == RET_YES)
+			printf("Check OK.    %s\n", srcFile);
+		else 
+			printf("Check Fail.  %s\n", srcFile);
+		return RET_YES;
+	}
 
 	// skip the non-encrypt files
 	if (ret == X_NONE && x_kind & X_DECRYPT)
@@ -186,7 +236,7 @@ int xcpFile(const char *srcFile, const char *destPath, int x_kind, const char *k
 			strcat(newFile, filename);
 		}
 	}
-	else if (x_kind == X_ENCRYPT)
+	else if (x_kind & X_ENCRYPT)
 	{
 		tmp = strrchr(newFile, '.');
 		if (tmp == NULL || strcmp(tmp, EXT_NAME) != 0)
@@ -194,43 +244,40 @@ int xcpFile(const char *srcFile, const char *destPath, int x_kind, const char *k
 	}
 
 	// prevent copy self
-	if (strcmp(srcFile, newFile) == 0)
+	if (strcmp(srcFile, newFile) == 0 && x_kind != X_CHECK && x_kind != X_MD5SUM)
 	{
 		fprintf(stderr, "Warning : Try to copy self '%s'\n", srcFile);
 		return RET_NO;
 	}
 
 	// update copy
-/*	if (x_kind & X_UPDATE)
+	if (x_kind & X_UPDATE)
 	{
 		ct_src = getUpdateTime(srcFile);
 		ct_new = getUpdateTime(newFile);
-		if (ct_new == RET_ERROR || ct_new >= ct_src)
+	//	printf("%ld %ld\n", ct_src, ct_new);
+		if (ct_new >= ct_src)
 		{
 			printf("Skip  '%s'\n", srcFile);
 			return RET_NO;
 		}
 	}
-	*/
+
 	if (x_kind & X_ENCRYPT)
+	{
+		printf("Encrypt '%s' to '%s' with '%s'\n", srcFile, newFile, key);
 		X_encrypt(srcFile, newFile, key);
-	else if (x_kind & X_DECRYPT)
-		X_decrypt(srcFile, newFile, key);
-	else if (x_kind & X_CHECK)
-	{
-		if (X_check(srcFile, key) == RET_YES)
-			printf("Check OK.    %s\n", srcFile);
-		else 
-			printf("Check Fail.  %s\n", srcFile);
 	}
-	else if (x_kind & X_MD5SUM)
+	else if (x_kind & X_DECRYPT)
 	{
-		MD5_File(srcFile, digest, 0, NULL);
-		MD5_Str(digest, md5);
-		printf("%s    %s\n", md5, srcFile);
+		printf("Decrypt '%s' to '%s' with %s'\n", srcFile, newFile, key);
+		X_decrypt(srcFile, newFile, key);
 	}
 	else
+	{
+		printf("Copy '%s' to '%s'\n", srcFile, newFile);
 		X_copy(srcFile, newFile);
+	}
 
 #if defined(XCP_LINUX)
 	// update the file protected mode
@@ -246,34 +293,68 @@ int xcpFile(const char *srcFile, const char *destPath, int x_kind, const char *k
 #if defined(XCP_WIN)
 int xcpDir(const char *srcPath, const char *destDir, int x_kind, const char *key)
 {
-	return RET_YES;
+	return xcpFile(srcPath, destDir, x_kind, key);
 }
+
+
 #else
 int xcpDir(const char *srcPath, const char *destDir, int x_kind, const char *key)
 {
-	int ret;
 	DIR *dir;
+	int ret;
+	size_t len = 0;
 	struct dirent *pdt;
+	char dirName[NAME_MAX] = "";
 	char srcFile[PATH_MAX] = "", destFile[PATH_MAX] = "";
 	char srcBase[PATH_MAX] = "", destBase[PATH_MAX] = "";
-	size_t srcBaseLen = 0, destBaseLen = 0;
-
+	
 	ret = isDir(srcPath);
 	if (ret == RET_NO)
-		return xcpFile(srcPath, destDir, x_kind, key);
+		return xcpFile(srcPath, destDir, x_kind, key);	
 	else if (ret == RET_ERROR)
 		return RET_ERROR;
-
 	dir = opendir(srcPath);
-	if (createDir(destDir, getMode(srcPath)) == RET_ERROR)
-		return RET_ERROR;	
+	getName(srcPath, dirName);
 
-	srcBaseLen = strlen(srcPath);
-	destBaseLen = strlen(destDir);
+	len = strlen(srcPath);
 	strcpy(srcBase, srcPath);
-	srcBase[srcBaseLen] = srcPath[srcBaseLen - 1] == '/' ? '\0' : '/';
+	srcBase[len] = srcPath[len - 1] == '/' ? '\0' : '/';
+
+	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
+	{
+		while ((pdt = readdir(dir)) != NULL)
+		{
+			memset(srcFile, 0, PATH_MAX);	
+			strcpy(srcFile, srcBase);
+			strcat(srcFile, pdt->d_name);
+		
+			ret = isDir(srcFile);
+			if (ret == RET_YES)
+			{
+				if (strcmp(strrchr(srcFile, '/'), "/.") != 0 && strcmp(strrchr(srcFile, '/'), "/..") != 0)
+					xcpDir(srcFile, NULL, x_kind, key);
+			}
+			else if (ret == RET_NO)
+				xcpFile(srcFile, NULL, x_kind, key);
+		}
+
+		return RET_YES;
+	}
+		
+	len = strlen(destDir);
 	strcpy(destBase, destDir);
-	destBase[destBaseLen] = destDir[destBaseLen - 1] == '/' ? '\0' : '/';
+	destBase[len] = destDir[len - 1] == '/' ? '\0' : '/';
+	if (isDir(destDir) == RET_YES)
+	{
+		strcat(destBase, dirName);
+		strcat(destBase, "/");
+	}
+	if (createDir(destBase, getMode(srcPath)) == RET_ERROR)
+	{
+		fprintf(stderr, "Fail to Create Dir '%s' %s\n", destDir, strerror(errno));
+		return RET_ERROR;
+	}
+	
 	while ((pdt = readdir(dir)) != NULL)
 	{
 		memset(srcFile, 0, PATH_MAX);

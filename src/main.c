@@ -27,8 +27,8 @@ xcp -u|--recusive
 
 int main(int argc, char **argv)
 {
-	int i, x_kind = X_NONE;
-	char *key = NULL;
+	int i, x_kind = X_NONE, x_update = X_NONE;
+	unsigned char *key = NULL;
 
 	int pathnum = 0;
 	char **path;
@@ -36,44 +36,66 @@ int main(int argc, char **argv)
 	for (i = 1; i < argc; ++i)
 	{
 		if (strcmp(argv[i], "-u") == 0 || strcmp(argv[i], "--update") == 0)
-			x_kind |= X_UPDATE;
+			x_update = X_UPDATE;
 		else if (strcmp(argv[i], "--encrypt") == 0 && argc > (i + 1))
 		{
-			x_kind ^= X_DECRYPT;
-			x_kind |= X_ENCRYPT;
+			x_kind = X_ENCRYPT;
 			key = argv[++i];
+			++i;
+			break;
 		}
 		else if (strcmp(argv[i], "--decrypt") == 0 && argc > (i + 1))
 		{
-			x_kind ^= X_ENCRYPT;
-			x_kind |= X_DECRYPT;
+			x_kind = X_DECRYPT;
 			key = argv[++i];
+			++i;
+			break;
 		}
 		else if (strcmp(argv[i], "--check") == 0 && argc > (i + 1))
 		{
-			x_kind &= X_CHECK;
+			x_kind = X_CHECK;
 			key = argv[++i];
+			++i;
+			break;
 		}
 		else if (strcmp(argv[i], "--md5sum") == 0)
 		{
-			x_kind &= X_MD5SUM;
+			x_kind = X_MD5SUM;
+			++i;
+			break;
 		}
 		else if (strcmp(argv[i], "--") == 0)
 		{
 			++i;
 			break;
 		}
+		else if (argv[i][0] == '-')
+		{
+			fprintf(stderr, "Bad Option\n");
+			return;
+		}
 		else
 			break;
 	}
+	if (key != NULL)
+		key = strrchr(key, '=') + 1;
+	x_kind |= x_update;
 
 	path = &argv[i];
 	pathnum = argc - i;
 
 	for (i = 0; i < pathnum - 1; ++i)
-	{
 		xcpDir(path[i], path[pathnum - 1], x_kind, key);
-	}
+	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
+		xcpDir(path[pathnum - 1], NULL, x_kind, key);
+
+
+xcpDir(path[0], path[1], X_ENCRYPT, "partoneplay");
+//xcpDir("f1", "ff2", X_ENCRYPT, "partoneplay");
+//xcpDir("f1", "fff2", X_ENCRYPT, "partoneplay");
+//printf("%d\n", X_check("f2.cxc", "partoneplay"));
+//xcpDir("ff2.cxc", "ff3", X_DECRYPT, "partoneplay");
+//xcpDir("fff2.cxc", "fff3", X_DECRYPT, "partoneplay");
 
 	return 0;
 }
