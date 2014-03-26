@@ -22,8 +22,8 @@ void help(const char *opt)
 
 xcp -u|--recusive 
 
-
 */
+
 
 int main(int argc, char **argv)
 {
@@ -89,11 +89,14 @@ int main(int argc, char **argv)
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
 		xcpDir(path[pathnum - 1], NULL, x_kind, key);
 	*/
-	xcpDir("a", "b", X_ENCRYPT, (unsigned char*)"partoneplay");
+/*	xcpDir("a", "b", X_ENCRYPT, (unsigned char*)"partoneplay");
 	xcpDir("a", NULL, X_CHECK, (unsigned char*)"partoneplay");
 	xcpDir("b", "c", X_DECRYPT, (unsigned char*)"partoneplay");
 	xcpDir("a", NULL, X_MD5SUM, NULL);
 	xcpDir("c", NULL, X_MD5SUM, NULL);
+	*/
+	TCHAR tch;
+	LPCTSTR lp;
 
 	return 0;
 }
