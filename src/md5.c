@@ -36,7 +36,7 @@ static unsigned char PADDING[64] = {
 #define II(a, b, c, d, x, s, ac) {(a) += I((b), (c), (d)) + (x)+(unsigned int)(ac); (a) = ROTATE_LEFT((a), (s)); (a) += (b);}
 
 
-void MD5_Encode(unsigned char *output, int *input, int len)
+void MD5_Encode(unsigned char *output, unsigned int *input, int len)
 {
 	int i, j;
 	for (i = 0, j = 0; j < len; ++i, j += 4)
@@ -188,7 +188,7 @@ void MD5_Update(MD5Context *context, const unsigned char *buf, int len)
 
 void MD5_Final(MD5Context * context, unsigned char digest[16])
 {
-	char bits[8];
+	unsigned char bits[8];
 	int index, padLen;
 
 	MD5_Encode(bits, context->count, 8);
@@ -212,12 +212,12 @@ void MD5(const char *str, unsigned char digest[16])
 	MD5_Final(&context, digest);
 }
 
-int MD5_File(const char *filename, unsigned char digest[16], size_t offset, const char *head)
+int MD5_File(const char *filename, unsigned char digest[16], size_t offset, const unsigned char *head)
 {
 	FILE *file;
 	MD5Context context;
 	size_t readSize;
-	char readBuf[BUF_SIZE];
+	unsigned char readBuf[BUF_SIZE];
 
 	if (!(file = fopen(filename, "rb")))
 		return RET_ERROR;
@@ -225,7 +225,7 @@ int MD5_File(const char *filename, unsigned char digest[16], size_t offset, cons
 	MD5_Init(&context);
 	
 	if (head != NULL)
-		MD5_Update(&context, head, strlen(head));
+		MD5_Update(&context, head, strlen((char*)head));
 
 	fseek(file, offset, SEEK_SET);
 	while ((readSize = fread(readBuf, 1, BUF_SIZE, file)) > 0)

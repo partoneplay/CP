@@ -41,7 +41,7 @@ int createDir(const char *path, mode_t mode);
 
 int isDir(const char* path);
 
-int xcpFile(const char *srcFile, const char *destPath, int x_kind, const char *key);
-int xcpDir(const char *srcPath, const char *destDir, int x_kind, const char *key);
+int xcpFile(const char *srcFile, const char *destPath, int x_kind, const unsigned char *key);
+int xcpDir(const char *srcPath, const char *destDir, int x_kind, const unsigned char *key);
 
 #endif

@@ -124,12 +124,13 @@ int createDir(const char *path, mode_t mode)
 #endif
 
 
-int xcpFile(const char *srcPath, const char *destPath, int x_kind, const char *key)
+int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigned char *key)
 {
 	size_t len;
 	time_t ct_src, ct_new;
 	char fileName[NAME_MAX] = "", extName[NAME_MAX] = "", newFile[PATH_MAX] = "";
-	char *tmp, digest[16], md5[33];
+	char *tmp, md5[33];
+	unsigned char digest[16];
 
 	// srcpath must be a regular file
 	if (isReg(srcPath) != RET_YES)
@@ -242,14 +243,14 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const char *k
 
 
 #if defined(XCP_WIN)
-int xcpDir(const char *srcPath, const char *destDir, int x_kind, const char *key)
+int xcpDir(const char *srcPath, const char *destDir, int x_kind, const unsigned char *key)
 {
 	return xcpFile(srcPath, destDir, x_kind, key);
 }
 
 
 #else
-int xcpDir(const char *srcPath, const char *destPath, int x_kind, const char *key)
+int xcpDir(const char *srcPath, const char *destPath, int x_kind, const unsigned char *key)
 {
 	DIR *dir;
 	int ret;
