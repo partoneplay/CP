@@ -89,28 +89,18 @@ int main(int argc, char **argv)
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
 		xcpDir(path[pathnum - 1], NULL, x_kind, key);
 	*/
-/*	xcpDir("a", "b", X_ENCRYPT, (unsigned char*)"partoneplay");
-	xcpDir("a", NULL, X_CHECK, (unsigned char*)"partoneplay");
-	xcpDir("b", "c", X_DECRYPT, (unsigned char*)"partoneplay");
-	xcpDir("a", NULL, X_MD5SUM, NULL);
-	xcpDir("c", NULL, X_MD5SUM, NULL);
-	*/
+	xcpFile(_T("1.txt"), _T("2"), X_ENCRYPT, (unsigned char*)"partoneplay");
+	xcpFile(_T("2.cxc"), NULL, X_CHECK, (unsigned char*)"partoneplay");
+	xcpFile(_T("2.cxc"), _T("3.txt"), X_DECRYPT, (unsigned char*)"partoneplay");
+	xcpFile(_T("1.txt"), NULL, X_MD5SUM, NULL);
+	xcpFile(_T("3.txt"), NULL, X_MD5SUM, NULL);
 
-	int i = 0;
-	char name[128];
-	char* path[5] = {
-		"",
-		"1.",
-		"1/11.1",
-		"1/11/",
-		"."
-	};
-	for (i = 0; i < 5; ++i)
-	{
-		getName(path[i], name);
-		printf("Name '%s' => '%s'\n", path[i], name);
-		getExtName(path[i], name);
-		printf("Ext '%s' => '%s'\n", path[i], name);
-	}
+/*
+	xcp("a", "b", X_ENCRYPT, (unsigned char*)"partoneplay");
+	xcp("a", NULL, X_CHECK, (unsigned char*)"partoneplay");
+	xcp("b", "c", X_DECRYPT, (unsigned char*)"partoneplay");
+	xcp("a", NULL, X_MD5SUM, NULL);
+	xcp("c", NULL, X_MD5SUM, NULL);
+	*/
 	return 0;
 }

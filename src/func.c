@@ -23,39 +23,61 @@ void getName(const TCHAR *path, TCHAR *name)
 	if (l < 0 || path[l] == _T('/')) ++l;
 
 	r = r - l;
-	_tmemcpy(name, &path[l], r + 1);
-	name[r + 1] = '\0';
+	_tcsncpy(name, &path[l], r + 1);
+	name[r + 1] = _T('\0');
 }
 
 
 // get extName with '.', get '.' if no extName
 void getExtName(const TCHAR *path, TCHAR *extName)
 {
-	const TCHAR *tmp;
+	int l = 0, r = 0;
 
+	r = _tcslen(path) - 1;
 	if (path == NULL || extName == NULL) return;
+	if (r < 0 || path[r] == _T('/') || path[r] == _T('.'))
+	{
+		extName[0] = _T('.');
+		extName[1] = _T('\0');
+		return;
+	}
 
-	tmp = _tcsrchr(path, '.');
-	if (tmp == NULL)
-		_tcscpy(extName, _T("."));
+	for (l = r - 1; l >= 0 && path[l] != _T('.'); --l);
+	if (l < 0)
+	{
+		extName[0] = _T('.');
+		extName[1] = _T('\0');
+		return;
+	}
 	else
-		_tcscpy(extName, tmp);
+	{
+		_tcsncpy(extName, &path[l], r - l + 1);
+		extName[r - l + 1] = _T('\0');
+	}
 }
 
 
-void c2w(const char *str, wchar_t *wstr)
+void c2t(const char *str, TCHAR *tstr)
 {
+#if defined(UNICODE)
 	size_t len = MultiByteToWideChar(CP_ACP, 0, str, -1, 0, 0);;
-	MultiByteToWideChar(CP_ACP, 0, str, -1, wstr, len);
-	wstr[len] = L'\0';
+	MultiByteToWideChar(CP_ACP, 0, str, -1, tstr, len);
+	tstr[len] = _T('\0');
+#else
+	strcpy(tstr, str);
+#endif
 }
 
 
-void w2c(const wchar_t *wstr, char *str)
+void t2c(const TCHAR *tstr, char *str)
 {
-	size_t len = WideCharToMultiByte(CP_ACP, 0, wstr, -1, NULL, 0, NULL, NULL);
-	WideCharToMultiByte(CP_OEMCP, 0, wstr, -1, str, len, NULL, NULL);
-	str[len] = '\0';
+#if defined(UNICODE)
+	size_t len = WideCharToMultiByte(CP_ACP, 0, tstr, -1, NULL, 0, NULL, NULL);
+	WideCharToMultiByte(CP_OEMCP, 0, tstr, -1, str, len, NULL, NULL);
+	str[len] = _T('\0');
+#else
+	strcpy(tstr, str);
+#endif
 }
 
 
@@ -72,7 +94,8 @@ int getFD(const TCHAR *path, WIN32_FIND_DATA *fd)
 }
 
 
-int isDir(const TCHAR* path, const WIN32_FIND_DATA *fd)
+// whether a dir
+int isDir(const WIN32_FIND_DATA *fd)
 {
 	if (fd == NULL) return RET_ERROR;
 	return fd->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ? RET_YES : RET_NO;
@@ -80,18 +103,27 @@ int isDir(const TCHAR* path, const WIN32_FIND_DATA *fd)
 
 
 // whether a file(normal or readonly or sparse)
-int isReg(const TCHAR *path, const WIN32_FIND_DATA *fd)
+int isReg(const WIN32_FIND_DATA *fd)
 {
+/*
 	if (fd == NULL) return RET_ERROR;
 	return fd->dwFileAttributes & FILE_ATTRIBUTE_NORMAL
 		|| fd->dwFileAttributes & FILE_ATTRIBUTE_READONLY
 		|| fd->dwFileAttributes & FILE_ATTRIBUTE_SPARSE_FILE
 		? RET_YES : RET_NO;
+*/
+	int ret = isDir(fd);
+	if (ret == RET_ERROR)
+		return RET_ERROR;
+	else if (ret == RET_YES)
+		return RET_NO;
+	else
+		return RET_YES;
 }
 
 
 // time of last update
-time_t getUpdateTime(const TCHAR *path, const WIN32_FIND_DATA *fd)
+time_t getUpdateTime(const WIN32_FIND_DATA *fd)
 {
 	ULARGE_INTEGER ul;
 	if (fd == NULL) return RET_ERROR;

@@ -3,8 +3,6 @@
 
 #include "func.h"
 #include "aes.h"
-#include <time.h>
-#include <errno.h>
 
 
 #if defined(XCP_WIN)
