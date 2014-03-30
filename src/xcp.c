@@ -348,7 +348,7 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 }
 
 
-int xcpDir(const char *srcPath, const char *destPath, int x_kind, const unsigned char *key)
+int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned char *key)
 {
 	DIR *dir;
 	int ret;
@@ -383,7 +383,7 @@ int xcpDir(const char *srcPath, const char *destPath, int x_kind, const unsigned
 			if (ret == RET_YES)
 			{
 				if (strcmp(strrchr(srcFile, '/'), "/.") != 0 && strcmp(strrchr(srcFile, '/'), "/..") != 0)
-					xcpDir(srcFile, NULL, x_kind, key);
+					xcp(srcFile, NULL, x_kind, key);
 			}
 			else if (ret == RET_NO)
 				xcpFile(srcFile, NULL, x_kind, key);
@@ -421,7 +421,7 @@ int xcpDir(const char *srcPath, const char *destPath, int x_kind, const unsigned
 		if (ret == RET_YES)
 		{
 			if (strcmp(strrchr(srcFile, '/'), "/.") != 0 && strcmp(strrchr(srcFile, '/'), "/..") != 0)
-				xcpDir(srcFile, destFile, x_kind, key);
+				xcp(srcFile, destFile, x_kind, key);
 		}
 		else if (ret == RET_NO)
 			xcpFile(srcFile, destFile, x_kind, key);
