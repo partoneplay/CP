@@ -161,7 +161,8 @@ int xcp(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsigned 
 	_tcscat(dirPattern, _T("*"));
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
 	{
-		while ((hFind = FindFirstFile(dirPattern, &fd)) != INVALID_HANDLE_VALUE)
+		hFind = FindFirstFile(dirPattern, &fd);
+		while (hFind != INVALID_HANDLE_VALUE)
 		{
 			_tcscpy(srcFile, srcBase);
 			_tcscat(srcFile, fd.cFileName);
@@ -169,13 +170,18 @@ int xcp(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsigned 
 			ret = isDir(&fd);
 			if (ret == RET_YES)
 			{
-				if (_tcscmp(_tcsrchr(srcFile, _T('/')),_T( "/.")) != 0 && _tcscmp(_tcsrchr(srcFile, _T('/')), _T("/..")) != 0)
+				if (_tcscmp(fd.cFileName, _T(".")) != 0 && _tcscmp(fd.cFileName, _T("..")) != 0)
 					xcp(srcFile, NULL, x_kind, key);
 			}
 			else if (ret == RET_NO)
 				xcpFile(srcFile, NULL, x_kind, key);
+
+			if (!FindNextFile(hFind, &fd))
+			{
+				FindClose(hFind);
+				hFind = INVALID_HANDLE_VALUE;
+			}
 		}
-		FindClose(hFind);
 		return RET_YES;
 	}
 
@@ -186,7 +192,7 @@ int xcp(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsigned 
 	if (PathIsDirectory(destBase))
 	{
 		_tcscat(destBase, dirName);
-		_tcscat(destBase, _T("/"));
+		_tcscat(destBase, _T("\\"));
 	}
 	if (createDir(destBase) == RET_ERROR)
 	{
@@ -195,7 +201,8 @@ int xcp(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsigned 
 		return RET_ERROR;
 	}
 
-	while ((hFind = FindFirstFile(dirPattern, &fd)) != INVALID_HANDLE_VALUE)
+	hFind = FindFirstFile(dirPattern, &fd);
+	while (hFind != INVALID_HANDLE_VALUE)
 	{
 		_tcscpy(srcFile, srcBase);
 		_tcscat(srcFile, fd.cFileName);
@@ -206,13 +213,18 @@ int xcp(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsigned 
 		ret = isDir(&fd);
 		if (ret == RET_YES)
 		{
-			if (_tcscmp(_tcsrchr(srcFile, _T('/')), _T("/.")) != 0 && _tcscmp(_tcsrchr(srcFile, _T('/')), _T("/..")) != 0)
+			if (_tcscmp(fd.cFileName, _T(".")) != 0 && _tcscmp(fd.cFileName, _T("..")) != 0)
 				xcp(srcFile, destFile, x_kind, key);
 		}
 		else if (ret == RET_NO)
 			xcpFile(srcFile, destFile, x_kind, key);
+
+		if (!FindNextFile(hFind, &fd))
+		{
+			FindClose(hFind);
+			hFind = INVALID_HANDLE_VALUE;
+		}
 	}
-	FindClose(hFind);
 	return RET_YES;
 }
 
