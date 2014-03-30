@@ -70,11 +70,6 @@ int xcpFile(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsig
 			newFile[_tcslen(newFile) - len] = _T('\0');
 		}
 	}
-	else
-	{
-		fprintf(stderr, "'%s' not Exists\n", destPath);
-		return RET_ERROR;
-	}
 
 	if (x_kind & X_ENCRYPT)
 	{
