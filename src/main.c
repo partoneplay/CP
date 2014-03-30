@@ -103,18 +103,19 @@ int main(int argc, char **argv)
 	xcpFile(_T("3.txt"), NULL, X_MD5SUM, NULL);
 */
 
-/*
+
 	xcp("a", "b", X_ENCRYPT, (unsigned char*)"partoneplay");
 	xcp("a", NULL, X_CHECK, (unsigned char*)"partoneplay");
 	xcp("b", "c", X_DECRYPT, (unsigned char*)"partoneplay");
 	xcp("a", NULL, X_MD5SUM, NULL);
 	xcp("c", NULL, X_MD5SUM, NULL);
-*/
+
+	/*
 	xcp(_T("a"), _T("b"), X_ENCRYPT, (unsigned char*)"partoneplay");
 	xcp(_T("a"), NULL, X_CHECK, (unsigned char*)"partoneplay");
 	xcp(_T("b"), _T("c"), X_DECRYPT, (unsigned char*)"partoneplay");
 	xcp(_T("a"), NULL, X_MD5SUM, NULL);
 	xcp(_T("c"), NULL, X_MD5SUM, NULL);
-
+*/
 	return 0;
 }
