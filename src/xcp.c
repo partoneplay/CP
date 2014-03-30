@@ -14,7 +14,7 @@ int xcpFile(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsig
 
 	if (getFD(srcPath, &fd) == RET_ERROR)
 	{
-		fprintf(stderr, "Fail to get info from '%s'\n", srcPath);
+		fprintf(stderr, "Fail to get info from '%s' : \n", srcPath, strerror(errno));
 		return RET_ERROR;
 	}
 
@@ -59,6 +59,16 @@ int xcpFile(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsig
 	{
 		newFile[len] = newFile[len - 1] == _T(PATH_DIV) ? _T('\0') : _T(PATH_DIV);
 		_tcscat(newFile, fileName);
+		if (x_kind & X_DECRYPT)
+		{
+			// the decrypted file should remove the EXT_NAME
+			len = _tcslen(_T(EXT_NAME));
+			{
+				fprintf(stderr, "Unexcepted Error '%s' too short\n", newFile);
+				return RET_ERROR;
+			}
+			newFile[_tcslen(newFile) - len] = _T('\0');
+		}
 	}
 	else
 	{
@@ -72,16 +82,6 @@ int xcpFile(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsig
 		tmp = _tcsrchr(newFile, _T('.'));
 		if (tmp == NULL || _tcscmp(tmp, _T(EXT_NAME)) != 0)
 			_tcscat(newFile, _T(EXT_NAME));
-	}
-	else if (x_kind & X_DECRYPT)
-	{
-		// the decrypted file should remove the EXT_NAME
-		len = _tcslen(_T(EXT_NAME));
-		{
-			fprintf(stderr, "Unexcepted Error '%s' too short\n", newFile);
-			return RET_ERROR;
-		}
-		newFile[_tcslen(newFile) - len] = _T('\0');
 	}
 
 	// prevent copy self
@@ -227,6 +227,7 @@ int xcp(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsigned 
 
 int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigned char *key)
 {
+	int ret = 0;
 	size_t len;
 	time_t ct_src, ct_new;
 	char fileName[NAME_MAX] = "", extName[NAME_MAX] = "", newFile[PATH_MAX] = "";
@@ -234,11 +235,17 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 	unsigned char digest[16];
 
 	// srcpath must be a regular file
-	if (isReg(srcPath) != RET_YES)
+	ret = isReg(srcPath);
+	if (ret == RET_NO)
 	{
 		printf("Skip Unregular File '%s'\n", srcPath);
 		return RET_SKIP;
 	}
+	else if (ret == RET_ERROR)
+	{
+		fprintf(stderr, "Fail to get info form '%s' : %s\n", srcPath, strerror(errno));
+		return RET_ERROR;
+	} 
 	getExtName(srcPath, extName);
 	getName(srcPath, fileName);
 
@@ -280,6 +287,17 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 		{
 			newFile[len] = newFile[len - 1] == PATH_DIV ? '\0' : PATH_DIV;
 			strcat(newFile, fileName);
+			if (x_kind & X_DECRYPT)
+			{
+				// the decrypted file should remove the EXT_NAME
+				len = strlen(EXT_NAME);
+				if (strlen(newFile) <= len)
+				{
+					fprintf(stderr, "Error '%s' too short\n", newFile);
+					return RET_ERROR;
+				}
+				memset(&newFile[strlen(newFile) - len], 0, len);
+			}
 		}
 	}
 
@@ -289,17 +307,6 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 		tmp = strrchr(newFile, '.');
 		if (tmp == NULL || strcmp(tmp, EXT_NAME) != 0)
 			strcat(newFile, EXT_NAME);
-	}
-	else if (x_kind & X_DECRYPT)
-	{
-		// the decrypted file should remove the EXT_NAME
-		len = strlen(EXT_NAME);
-		if (strlen(newFile) <= len)
-		{
-			fprintf(stderr, "Error '%s' too short\n", newFile);
-			return RET_ERROR;
-		}
-		memset(&newFile[strlen(newFile) - len], 0, len);
 	}
 
 	// prevent copy self
