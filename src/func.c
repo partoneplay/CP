@@ -18,9 +18,9 @@ void getName(const TCHAR *path, TCHAR *name)
 		return;
 	}
 
-	if (path[r] == _T('/')) --r;
-	for (l = r - 1; l >= 0 && path[l] != _T('/'); --l);
-	if (l < 0 || path[l] == _T('/')) ++l;
+	if (path[r] == _T(PATH_DIV)) --r;
+	for (l = r - 1; l >= 0 && path[l] != _T(PATH_DIV); --l);
+	if (l < 0 || path[l] == _T(PATH_DIV)) ++l;
 
 	r = r - l;
 	_tcsncpy(name, &path[l], r + 1);
@@ -35,7 +35,7 @@ void getExtName(const TCHAR *path, TCHAR *extName)
 
 	r = _tcslen(path) - 1;
 	if (path == NULL || extName == NULL) return;
-	if (r < 0 || path[r] == _T('/') || path[r] == _T('.'))
+	if (r < 0 || path[r] == _T(PATH_DIV) || path[r] == _T('.'))
 	{
 		extName[0] = _T('.');
 		extName[1] = _T('\0');
@@ -167,9 +167,9 @@ void getName(const char *path, char *name)
 		return;
 	}
 
-	if (path[r] == '/') --r;
-	for (l = r - 1; l >= 0 && path[l] != '/'; --l);
-	if (l < 0 || path[l] == '/') ++l;
+	if (path[r] == PATH_DIV) --r;
+	for (l = r - 1; l >= 0 && path[l] != PATH_DIV; --l);
+	if (l < 0 || path[l] == PATH_DIV) ++l;
 
 	r = r - l;
 	memcpy(name, &path[l], r + 1);
@@ -184,7 +184,7 @@ void getExtName(const char *path, char *extName)
 
 	r = strlen(path) - 1;
 	if (path == NULL || extName == NULL) return;
-	if (r < 0 || path[r] == '/' || path[r] == '.')
+	if (r < 0 || path[r] == PATH_DIV || path[r] == '.')
 	{
 		extName[0] = '.';
 		extName[1] = '\0';

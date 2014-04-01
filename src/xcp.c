@@ -63,6 +63,7 @@ int xcpFile(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsig
 		{
 			// the decrypted file should remove the EXT_NAME
 			len = _tcslen(_T(EXT_NAME));
+			if (_tcslen(newFile) <= len)
 			{
 				fprintf(stderr, "Unexcepted Error '%s' too short\n", newFile);
 				return RET_ERROR;
@@ -217,7 +218,7 @@ int xcp(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsigned 
 				xcp(srcFile, destFile, x_kind, key);
 		}
 		else if (ret == RET_NO)
-			xcpFile(srcFile, destFile, x_kind, key);
+			xcpFile(srcFile, destBase, x_kind, key);
 
 		if (!FindNextFile(hFind, &fd))
 		{
@@ -436,7 +437,7 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 				xcp(srcFile, destFile, x_kind, key);
 		}
 		else if (ret == RET_NO)
-			xcpFile(srcFile, destFile, x_kind, key);
+			xcpFile(srcFile, destBase, x_kind, key);
 	}
 	closedir(dir);
 	return RET_YES;

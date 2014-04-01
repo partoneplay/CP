@@ -1,37 +1,18 @@
 #include "xcp.h"
 
 
-/*
-void help(const char *opt)
-{
-	if (opt == NULL || strlen(opt) < 2)
-	{
-
-	}
-	else if (opt[1] == 'd')
-		printf("Do you mean '-d | --decrypt key'\n");
-	else if (opt[1] == 'e')
-		printf("Do you mean '-e | --encrypt key'\n");
-	else if (opt[1] == 'r')
-		printf("Do you mean '-r | --recursive'\n");
-	else if (opt[1] == 'u')
-		printf("Do you mean '-u | --update'\n");
-	else if (opt[1] == 'c')
-		printf("Do you mean '-c | --check'\n");
-}
-
-xcp -u|--recusive 
-
-*/
-
-
 int main(int argc, char **argv)
 {
-/*	int i, x_kind = X_NONE, x_update = X_NONE;
+	int i, x_kind = X_NONE, x_update = X_NONE;
 	unsigned char *key = NULL;
+	unsigned char digest[16];
 
 	int pathnum = 0;
 	char **path;
+
+#if defined(XCP_WIN)
+	TCHAR tpath[PATH_MAX] = _T(""), tpath2[PATH_MAX] = _T("");
+#endif
 
 	for (i = 1; i < argc; ++i)
 	{
@@ -78,44 +59,70 @@ int main(int argc, char **argv)
 			break;
 	}
 	if (key != NULL)
-		key = strrchr(key, '=') + 1;
+		key = strrchr(key, '=');
+	if (key == NULL && x_kind != X_MD5SUM)
+	{
+		fprintf(stderr, "Missing --key=pkey\n");
+		return 0;
+	}
 	x_kind |= x_update;
 
 	path = &argv[i];
 	pathnum = argc - i;
+
+	if (x_kind != X_MD5SUM)
+	{
+		key++;
+		MD5(key, digest);
+	}
 	
+#if defined(XCP_WIN)
+	c2t(path[pathnum - 1], tpath2);
 	for (i = 0; i < pathnum - 1; ++i)
-		xcpDir(path[i], path[pathnum - 1], x_kind, key);
+	{
+		c2t(path[i], tpath);
+		xcp(tpath, tpath2, x_kind, digest);
+	}
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
-		xcpDir(path[pathnum - 1], NULL, x_kind, key);
-	*/
-/*	xcpFile("1.txt", "2", X_ENCRYPT, (unsigned char*)"partoneplay");
-	xcpFile("2.cxc", NULL, X_CHECK, (unsigned char*)"partoneplay");
-	xcpFile("2.cxc", "3.txt", X_DECRYPT, (unsigned char*)"partoneplay");
-	xcpFile("1.txt", NULL, X_MD5SUM, NULL);
-	xcpFile("3.txt", NULL, X_MD5SUM, NULL);
-	*/
-/*
-	xcpFile(_T("1.txt"), _T("2"), X_ENCRYPT, (unsigned char*)"partoneplay");
-	xcpFile(_T("2.cxc"), NULL, X_CHECK, (unsigned char*)"partoneplay");
-	xcpFile(_T("2.cxc"), _T("3.txt"), X_DECRYPT, (unsigned char*)"partoneplay");
-	xcpFile(_T("1.txt"), NULL, X_MD5SUM, NULL);
-	xcpFile(_T("3.txt"), NULL, X_MD5SUM, NULL);
+		xcp(tpath2, NULL, x_kind, digest);
+#else
+	for (i = 0; i < pathnum - 1; ++i)
+		xcp(path[i], path[pathnum - 1], x_kind, digest);
+	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
+		xcp(path[pathnum - 1], NULL, x_kind, digest);
+#endif
+
+	
+/*	xcp("1.txt", "2", X_ENCRYPT, (unsigned char*)"partoneplay");
+	xcp("2.cxc", NULL, X_CHECK, (unsigned char*)"partoneplay");
+	xcp("2.cxc", "3.txt", X_DECRYPT, (unsigned char*)"partoneplay");
+	xcp("1.txt", NULL, X_MD5SUM, NULL);
+	xcp("3.txt", NULL, X_MD5SUM, NULL);
 */
 
+/*
+	xcp(_T("1.txt"), _T("2"), X_ENCRYPT, (unsigned char*)"partoneplay");
+	xcp(_T("2.cxc"), NULL, X_CHECK, (unsigned char*)"partoneplay");
+	xcp(_T("2.cxc"), _T("3.txt"), X_DECRYPT, (unsigned char*)"partoneplay");
+	xcp(_T("1.txt"), NULL, X_MD5SUM, NULL);
+	xcp(_T("3.txt"), NULL, X_MD5SUM, NULL);
+*/
 
+/*
 	xcp("a", "b", X_ENCRYPT, (unsigned char*)"partoneplay");
-	xcp("a", NULL, X_CHECK, (unsigned char*)"partoneplay");
+	xcp("b", NULL, X_CHECK, (unsigned char*)"partoneplay");
 	xcp("b", "c", X_DECRYPT, (unsigned char*)"partoneplay");
 	xcp("a", NULL, X_MD5SUM, NULL);
 	xcp("c", NULL, X_MD5SUM, NULL);
+*/
 
-	/*
+/*
 	xcp(_T("a"), _T("b"), X_ENCRYPT, (unsigned char*)"partoneplay");
-	xcp(_T("a"), NULL, X_CHECK, (unsigned char*)"partoneplay");
+	xcp(_T("b"), NULL, X_CHECK, (unsigned char*)"partoneplay");
 	xcp(_T("b"), _T("c"), X_DECRYPT, (unsigned char*)"partoneplay");
 	xcp(_T("a"), NULL, X_MD5SUM, NULL);
 	xcp(_T("c"), NULL, X_MD5SUM, NULL);
 */
+
 	return 0;
 }
