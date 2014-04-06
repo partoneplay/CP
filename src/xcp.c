@@ -242,7 +242,7 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 	if (x_kind & X_ENCRYPT)
 	{
 		printf("Encrypt '%s' to '%s'\n", srcPath, newFile);
-		return X_encrypt(srcPath, newFile, key);
+		ret = X_encrypt(srcPath, newFile, key);
 	}
 	else if (x_kind & X_DECRYPT)
 	{
@@ -251,19 +251,19 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 			return RET_SKIP;
 
 		printf("Decrypt '%s' to '%s'\n", srcPath, newFile);
-		return X_decrypt(srcPath, newFile, key);
+		ret = X_decrypt(srcPath, newFile, key);
 	}
 	else
 	{
 		printf("Copy '%s' to '%s'\n", srcPath, newFile);
-		return X_copy(srcPath, newFile);
+		ret = X_copy(srcPath, newFile);
 	}
 #if defined(XCP_WIN)
-#define something
+	;
 #else
 	chmod(newFile, getMode(srcPath));
 #endif
-	return RET_YES;
+	return ret;
 }
 
 
@@ -305,7 +305,12 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 		{
 			t2c(fd.cFileName, tmp);
 #else
-		dir = opendir(srcBase);		
+		dir = opendir(srcBase);
+		if (!dir)
+		{
+			fprintf(stderr, "Unable to open dir '%s' : %s\n", srcBase, strerror(errno));
+			return RET_ERROR;
+		}
 		while ((pdt = readdir(dir)) != NULL)
 		{
 			strcpy(tmp, pdt->d_name);
@@ -363,7 +368,12 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 	{
 		t2c(fd.cFileName, tmp);
 #else
-	dir = opendir(srcBase);	
+	dir = opendir(srcBase);
+	if (!dir)
+	{
+		fprintf(stderr, "Unable to open dir '%s' : %s\n", srcBase, strerror(errno));
+		return RET_ERROR;
+	}
 	while ((pdt = readdir(dir)) != NULL)
 	{
 		strcpy(tmp, pdt->d_name);
