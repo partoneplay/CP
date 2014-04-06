@@ -283,7 +283,7 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 	char dirName[NAME_MAX] = "", tmp[PATH_MAX] = "";
 	char srcFile[PATH_MAX] = "", destFile[PATH_MAX] = "";
 	char srcBase[PATH_MAX] = "", destBase[PATH_MAX] = "";
-	
+
 	ret = isDir(srcPath);
 	if (ret == RET_NO)
 		return xcpFile(srcPath, destPath, x_kind, pkey);	
@@ -294,7 +294,7 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 	len = strlen(srcPath);
 	strcpy(srcBase, srcPath);
 	srcBase[len] = srcPath[len - 1] == PATH_DIV ? '\0' : PATH_DIV;
-	
+
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
 	{
 #if defined(XCP_WIN)
@@ -305,6 +305,7 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 		{
 			t2c(fd.cFileName, tmp);
 #else
+		dir = opendir(srcBase);		
 		while ((pdt = readdir(dir)) != NULL)
 		{
 			strcpy(tmp, pdt->d_name);
@@ -362,6 +363,7 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 	{
 		t2c(fd.cFileName, tmp);
 #else
+	dir = opendir(srcBase);	
 	while ((pdt = readdir(dir)) != NULL)
 	{
 		strcpy(tmp, pdt->d_name);

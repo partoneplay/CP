@@ -29,11 +29,11 @@ int main(int argc, char **argv)
 		{ 0, 0, 0, 0 }
 	};
 
-	unsigned char digest[16] = "";
+	unsigned char digest[16] = "pkey";
 	int x_kind = X_NONE, x_update = X_NONE;
 
 	int pathnum = 0;
-	const char **path = (char **)malloc(argc * sizeof(char*));
+	const char **path = (const char **)malloc(argc * sizeof(char*));
 
 	while ((opt = getopt_long(argc, argv, short_options, long_options, NULL)) != -1)
 	{
@@ -124,16 +124,20 @@ int main(int argc, char **argv)
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
 	{
 		for (i = 0; i < pathnum; ++i)
+		{	
 			xcp(path[i], NULL, x_kind, digest);
+		}
 	}
 	else if (pathnum >= 2)
 	{
 		for (i = 0; i < pathnum - 1; ++i)
+		{
 			xcp(path[i], path[pathnum - 1], x_kind, digest);
+		}
 	}
 #endif
 	else
-		fprintf(stderr, "Missing Dest Fold!");
+		fprintf(stderr, "Missing Dest Fold!\n");
 	
 
 /*
