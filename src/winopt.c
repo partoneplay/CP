@@ -54,7 +54,7 @@
    GNU application programs can use a third alternative mode in which
    they can distinguish the relative order of options and other arguments.  */
 
-#include "getopt.h"
+#include "winopt.h"
 
 extern int _getopt_internal (int ___argc, char *const *___argv,
                  const char *__shortopts,

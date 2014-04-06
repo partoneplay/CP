@@ -1,10 +1,23 @@
 #include "xcp.h"
-#include "xgetopt.h"
+#include "func.h"
+#include "md5.h"
+
+#if defined(XCP_WIN)
+#include "winopt.h"
+#else 
+#include <getopt.h>
+#endif
 
 
 int main(int argc, char **argv)
 {
-	int opt;
+#if defined (XCP_WIN)
+	WIN32_FIND_DATA fd;
+	HANDLE hFind = INVALID_HANDLE_VALUE;
+	TCHAR tmp_t[PATH_MAX];
+	char tmp[PATH_MAX];
+#endif
+	int opt, i;
 	char* const short_options = "uedcmk:";
 	struct option long_options[] = {
 		{ "update", no_argument, NULL, 'u' },
@@ -19,9 +32,11 @@ int main(int argc, char **argv)
 	unsigned char digest[16] = "";
 	int x_kind = X_NONE, x_update = X_NONE;
 
+	int pathnum = 0;
+	const char **path = (char **)malloc(argc * sizeof(char*));
+
 	while ((opt = getopt_long(argc, argv, short_options, long_options, NULL)) != -1)
 	{
-		printf("%c\n", opt);
 		switch (opt)
 		{
 		case 'u':
@@ -40,89 +55,88 @@ int main(int argc, char **argv)
 			x_kind = X_MD5SUM;
 			break;
 		case 'k':
-			x_kind = X_CHECK;
 			MD5(optarg, digest);
 			break;
 		default:
-			printf("Path: %s\n", optarg);
+			fprintf(stderr, "Bad Option\n");
 			break;
 		}
 	}
-
-	/*
-	int i, x_kind = X_NONE, x_update = X_NONE;
-	unsigned char *key = NULL;
-	unsigned char digest[16];
-
-	int pathnum = 0;
-	char **path;
-
-	#if defined(XCP_WIN)
-	TCHAR tpath[PATH_MAX] = _T(""), tpath2[PATH_MAX] = _T("");
-	#endif
-
-	for (i = 1; i < argc; ++i)
-	{
-	if (strcmp(argv[i], "-u") == 0 || strcmp(argv[i], "--update") == 0)
-	x_update = X_UPDATE;
-	else if (strcmp(argv[i], "--encrypt") == 0 && argc > (i + 1))
-	{
-	x_kind = X_ENCRYPT;
-	key = argv[++i];
-	++i;
-	break;
-	}
-	else if (strcmp(argv[i], "--decrypt") == 0 && argc > (i + 1))
-	{
-	x_kind = X_DECRYPT;
-	key = argv[++i];
-	++i;
-	break;
-	}
-	else if (strcmp(argv[i], "--check") == 0 && argc > (i + 1))
-	{
-	x_kind = X_CHECK;
-	key = argv[++i];
-	++i;
-	break;
-	}
-	else if (strcmp(argv[i], "--md5sum") == 0)
-	{
-	x_kind = X_MD5SUM;
-	++i;
-	break;
-	}
-	else if (strcmp(argv[i], "--") == 0)
-	{
-	++i;
-	break;
-	}
-	else if (argv[i][0] == '-')
-	{
-	fprintf(stderr, "Bad Option\n");
-	return;
-	}
-	else
-	break;
-	}
-	if (key != NULL)
-	key = strrchr(key, '=');
-	if (key == NULL && x_kind != X_MD5SUM)
-	{
-	fprintf(stderr, "Missing --key=pkey\n");
-	return 0;
-	}
 	x_kind |= x_update;
-
-	path = &argv[i];
-	pathnum = argc - i;
-
-	if (x_kind != X_MD5SUM)
+	for (i = 1; i < optind; ++i)
 	{
-	key++;
-	MD5(key, digest);
+		if (argv[i][0] != '-' && strcmp(argv[i - 1], "--key") != 0)
+		{
+			path[pathnum++] = argv[i];
+		}
 	}
+	for (i = optind; i < argc; ++i)
+		path[pathnum++] = argv[i];
 
+#if defined (XCP_WIN)
+	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
+	{
+		for (i = 0; i < pathnum; ++i)
+		{
+			c2t(path[i], tmp_t);
+			if (PathIsDirectory(tmp_t))
+				xcp(path[i], NULL, x_kind, digest);
+			else
+			{
+				hFind = FindFirstFile(tmp_t, &fd);
+				while (hFind != INVALID_HANDLE_VALUE)
+				{
+					t2c(fd.cFileName, tmp);
+					xcp(tmp, NULL, x_kind, digest);
+					if (!FindNextFile(hFind, &fd))
+					{
+						FindClose(hFind);
+						hFind = INVALID_HANDLE_VALUE;
+					}
+				}
+			}
+		}	
+	}
+	else if (pathnum >= 2)
+	{
+		for (i = 0; i < pathnum - 1; ++i)
+		{
+			c2t(path[i], tmp_t);
+			if (PathIsDirectory(tmp_t))
+				xcp(path[i], path[pathnum - 1], x_kind, digest);
+			else
+			{
+				hFind = FindFirstFile(tmp_t, &fd);
+				while (hFind != INVALID_HANDLE_VALUE)
+				{
+					t2c(fd.cFileName, tmp);
+					xcp(tmp, path[pathnum - 1], x_kind, digest);
+					if (!FindNextFile(hFind, &fd))
+					{
+						FindClose(hFind);
+						hFind = INVALID_HANDLE_VALUE;
+					}
+				}
+			}
+		}
+	}
+#else
+	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
+	{
+		for (i = 0; i < pathnum; ++i)
+			xcp(path[i], NULL, x_kind, digest);
+	}
+	else if (pathnum >= 2)
+	{
+		for (i = 0; i < pathnum - 1; ++i)
+			xcp(path[i], path[pathnum - 1], x_kind, digest);
+	}
+#endif
+	else
+		fprintf(stderr, "Missing Dest Fold!");
+	
+
+/*
 	#if defined(XCP_WIN)
 	c2t(path[pathnum - 1], tpath2);
 	for (i = 0; i < pathnum - 1; ++i)
@@ -138,7 +152,7 @@ int main(int argc, char **argv)
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
 	xcp(path[pathnum - 1], NULL, x_kind, digest);
 	#endif
-
+*/
 
 	/*	xcp("1.txt", "2", X_ENCRYPT, (unsigned char*)"partoneplay");
 	xcp("2.cxc", NULL, X_CHECK, (unsigned char*)"partoneplay");

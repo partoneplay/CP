@@ -1,17 +1,14 @@
 #ifndef XCP_H
 #define XCP_H
 
-#include "func.h"
-#include "aes.h"
+#include "os.h"
 
 
-#if defined(XCP_WIN)
-int xcpFile(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsigned char *key);
-int xcp(const TCHAR *srcPath, const TCHAR *destPath, int x_kind, const unsigned char *key);
-#else
+int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *userKey);
+int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *userKey);
+int X_check(const char *filename, const unsigned char *userKey);
+int X_copy(const char *srcFile, const char *newFile);
+
 int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigned char *key);
 int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned char *key);
-#endif
-
-
 #endif
