@@ -6,7 +6,7 @@
 #include <string.h>
 
 #define EXT_NAME ".cxc"
-#define BUF_SIZE 1024	// must be 16x
+#define BUF_SIZE 4096	// must be 16x
 
 // filename max length
 #define NAME_MAX 256

@@ -1,4 +1,5 @@
 #include "os.h"
+#include "md5.h"
 #include <time.h>
 #include <errno.h>
 
@@ -8,6 +9,11 @@
 #else
 #	define PATH_DIV '/'
 #endif
+
+
+void MD5(const char *str, unsigned char digest[16]);
+int MD5_File(const char *filename, unsigned char digest[16], size_t offset, const unsigned char *head);
+void MD5_Str(const unsigned char digest[16], char str[33]);
 
 
 // get dir or filename(with extname) without PATH_DIV

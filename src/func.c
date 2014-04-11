@@ -1,5 +1,50 @@
 #include "func.h"
 
+void MD5(const char *str, unsigned char digest[16])
+{
+	MD5Context context;
+	MD5_Init(&context);
+	MD5_Update(&context, (unsigned char*)str, strlen(str));
+	MD5_Final(&context, digest);
+}
+
+int MD5_File(const char *filename, unsigned char digest[16], size_t offset, const unsigned char *head)
+{
+	FILE *file;
+	MD5Context context;
+	size_t readSize;
+	unsigned char readBuf[BUF_SIZE];
+
+	if (!(file = fopen(filename, "rb")))
+		return RET_ERROR;
+	
+	MD5_Init(&context);
+	
+	if (head != NULL)
+		MD5_Update(&context, head, strlen((char*)head));
+
+	fseek(file, offset, SEEK_SET);
+	while ((readSize = fread(readBuf, 1, BUF_SIZE, file)) > 0)
+		MD5_Update(&context, readBuf, readSize);
+	fclose(file);
+	MD5_Final(&context, digest);
+	
+	return RET_YES;
+}
+
+void MD5_Str(const unsigned char digest[16], char str[33])
+{
+	int i = 0, tmp = 0;
+	for (i = 0; i < 16; ++i)
+	{
+		tmp = (digest[i] & 0xF0) >> 4;
+		str[2*i] = tmp > 9 ? ('a' + tmp - 10) : ('0' + tmp);
+		tmp = digest[i] & 0x0F;
+		str[2*i + 1] = tmp > 9 ? ('a' + tmp - 10) : ('0' + tmp);
+	}
+	str[32] = '\0';
+}
+
 
 void getName(const char *path, char *name)
 {
