@@ -39,6 +39,14 @@ void t2c(const TCHAR *tstr, char *str);
 // the parent dir must exists
 int createDir(const char *path);
 
+typedef struct
+{
+	WIN32_FIND_DATA fd;
+
+	HANDLE xfind;
+	char name[NAME_MAX];
+} X_DIR;
+
 #else
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -51,4 +59,17 @@ mode_t getMode(const char *path);
 // the parent dir must exists
 int createDir(const char *path, mode_t mode);
 
+typedef struct
+{
+	struct dirent *pdt;
+
+	DIR *xfind;
+	char name[NAME_MAX];
+} X_DIR;
+
 #endif
+
+
+int X_findfirst(const char *path, X_DIR *xdir);
+int X_findnext(X_DIR *xdir);
+void X_findclose(X_DIR *xdir);

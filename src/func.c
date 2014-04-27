@@ -170,6 +170,44 @@ int createDir(const char *path)
 	return RET_YES;
 }
 
+int X_findfirst(const char *path, X_DIR *xdir)
+{
+	int len = 0;
+	TCHAR tmp[PATH_MAX] = _T("");
+
+	if (xdir == NULL)
+		return RET_ERROR;
+
+	c2t(path, tmp);
+	len = _tcslen(tmp);
+	tmp[len] = tmp[len - 1] == PATH_DIV ? '\0' : PATH_DIV;
+	_tcscat(tmp, _T("*"));
+	xdir->xfind = FindFirstFile(tmp, &xdir->fd);
+	if (xdir->xfind == INVALID_HANDLE_VALUE)
+		return RET_END;
+
+	t2c(xdir->fd.cFileName, xdir->name);
+	return RET_YES;
+}
+
+int X_findnext(X_DIR *xdir)
+{
+	if (xdir == NULL)
+		return RET_ERROR;
+
+	if (!FindNextFile(xdir->xfind, &xdir->fd))
+		return RET_END;
+
+	t2c(xdir->fd.cFileName, xdir->name);
+	return RET_YES;
+}
+
+void X_findclose(X_DIR *xdir)
+{
+	FindClose(xdir->xfind);
+	xdir->xfind = INVALID_HANDLE_VALUE;
+}
+
 #else
 
 mode_t getMode(const char *path)
@@ -190,6 +228,42 @@ int createDir(const char *path, mode_t mode)
 			return RET_ERROR;
 	}
 	return RET_YES;
+}
+
+int X_findfirst(const char *path, X_DIR *xdir)
+{
+	if (xdir == NULL)
+		return RET_ERROR;
+
+	xdir->xfind = opendir(path);;
+	if (!xdir->xfind)
+		return RET_END;
+
+	xdir->pdt = readdir(xdir->xfind);
+	if (xdir->pdt == NULL)
+		return RET_END;
+
+	strcpy(xdir->name, pdt->d_name)
+	return RET_YES;
+}
+
+int X_findnext(X_DIR *xdir)
+{
+	if (xdir == NULL)
+		return RET_ERROR;
+
+	xdir->pdt = readdir(xdir->xfind);
+	if (xdir->pdt == NULL)
+		return RET_END;
+
+	strcpy(xdir->name, pdt->d_name)
+	return RET_YES;
+}
+
+void X_findclose(X_DIR *xdir)
+{
+	closedir(xdir->xfind);
+	xdir->xfind = NULL;
 }
 
 #endif

@@ -13,6 +13,7 @@
 // path max length
 #define PATH_MAX 4096
 
+#define RET_END 4
 #define RET_SKIP 3
 #define RET_YES 2
 #define RET_NO 1
@@ -23,7 +24,7 @@
 #define X_DECRYPT 2 	// 0x02
 #define X_CHECK 4		// 0x08
 #define X_MD5SUM 8		// 0x10
-#define X_UPDATE 16 		// 0x04
+#define X_UPDATE 16 	// 0x04
 
 	
 /**

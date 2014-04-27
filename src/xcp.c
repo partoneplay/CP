@@ -269,18 +269,11 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 
 int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned char *pkey)
 {
-#if defined (XCP_WIN)
-	WIN32_FIND_DATA fd;
-	HANDLE hFind = INVALID_HANDLE_VALUE;
-	TCHAR tmp_t[PATH_MAX] = _T("");
-#else
-	DIR *dir;
-	struct dirent *pdt;
-#endif
+	X_DIR xdir;
 	
 	int ret = 0;
 	size_t len = 0;
-	char dirName[NAME_MAX] = "", tmp[PATH_MAX] = "";
+	char dirName[NAME_MAX] = "";
 	char srcFile[PATH_MAX] = "", destFile[PATH_MAX] = "";
 	char srcBase[PATH_MAX] = "", destBase[PATH_MAX] = "";
 
@@ -297,46 +290,27 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
 	{
-#if defined(XCP_WIN)
-		c2t(srcBase, tmp_t);
-		_tcscat(tmp_t, _T("*"));
-		hFind = FindFirstFile(tmp_t, &fd);
-		while (hFind != INVALID_HANDLE_VALUE)
+		ret = X_findfirst(srcBase, &xdir);
+		if (ret != RET_YES)
+			return RET_END;
+
+		while (ret != RET_END)
 		{
-			t2c(fd.cFileName, tmp);
-#else
-		dir = opendir(srcBase);
-		if (!dir)
-		{
-			fprintf(stderr, "Unable to open dir '%s' : %s\n", srcBase, strerror(errno));
-			return RET_ERROR;
-		}
-		while ((pdt = readdir(dir)) != NULL)
-		{
-			strcpy(tmp, pdt->d_name);
-#endif
 			strcpy(srcFile, srcBase);
-			strcat(srcFile, tmp);
+			strcat(srcFile, xdir.name);
 
 			ret = isDir(srcFile);
 			if (ret == RET_YES)
 			{
-				if (strcmp(tmp, ".") != 0 && strcmp(tmp, "..") != 0)
+				if (strcmp(xdir.name, ".") != 0 && strcmp(xdir.name, "..") != 0)
 					xcp(srcFile, NULL, x_kind, pkey);
 			}
 			else if (ret == RET_NO)
 				xcpFile(srcFile, NULL, x_kind, pkey);
-#if defined(XCP_WIN)
-			if (!FindNextFile(hFind, &fd))
-			{
-				FindClose(hFind);
-				hFind = INVALID_HANDLE_VALUE;
-			}
-#endif
+
+			ret = X_findnext(&xdir);
 		}
-#ifndef XCP_WIN
-		closedir(dir);
-#endif
+		X_findclose(&xdir);
 		return RET_YES;
 	}
 
@@ -360,49 +334,27 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 		return RET_ERROR;
 	}
 
-#if defined(XCP_WIN)
-	c2t(srcBase, tmp_t);
-	_tcscat(tmp_t, _T("*"));
-	hFind = FindFirstFile(tmp_t, &fd);
-	while (hFind != INVALID_HANDLE_VALUE)
+	ret = X_findfirst(srcBase, &xdir);
+	if (ret != RET_YES)
+		return RET_END;
+
+	while (ret != RET_END)
 	{
-		t2c(fd.cFileName, tmp);
-#else
-	dir = opendir(srcBase);
-	if (!dir)
-	{
-		fprintf(stderr, "Unable to open dir '%s' : %s\n", srcBase, strerror(errno));
-		return RET_ERROR;
-	}
-	while ((pdt = readdir(dir)) != NULL)
-	{
-		strcpy(tmp, pdt->d_name);
-#endif
 		strcpy(srcFile, srcBase);
-		strcat(srcFile, tmp);
+		strcat(srcFile, xdir.name);
 
 		strcpy(destFile, destBase);
-		strcat(destFile, tmp);
+		strcat(destFile, xdir.name);
 
 		ret = isDir(srcFile);
 		if (ret == RET_YES)
 		{
-			if (strcmp(tmp, ".") != 0 && strcmp(tmp, "..") != 0)
+			if (strcmp(xdir.name, ".") != 0 && strcmp(xdir.name, "..") != 0)
 				xcp(srcFile, destFile, x_kind, pkey);
 		}
 		else if (ret == RET_NO)
 			xcpFile(srcFile, destBase, x_kind, pkey);
-
-#if defined(XCP_WIN)
-		if (!FindNextFile(hFind, &fd))
-		{
-			FindClose(hFind);
-			hFind = INVALID_HANDLE_VALUE;
-		}
-#endif
 	}
-#ifndef XCP_WIN
-	closedir(dir);
-#endif
+	X_findclose(&xdir);
 	return RET_YES;
 }
