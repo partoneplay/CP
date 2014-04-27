@@ -10,9 +10,9 @@ xcp [选项] 源目录 目标目录
 	如果目标目录存在，则将源目录拷贝到目标目录下，保留原目录名；否则创建目标目录，并将源目录下的所有文件以及子目录拷贝到目标目录下；
 
 	xcp [-u] 源文件 目标文件
-	xcp [-u] -e|--encrypt –k=pkey|--key=pkey|--key pkey 源文件 加密后文件
-	xcp [-u] -d|--decrypt –k=pkey|--key=pkey|--key pkey 加密文件 解密后文件
-	xcp -c|--check –k=pkey|--key=pkey|--key pkey 文件或目录
+	xcp [-u] -e|--encrypt –k pkey|--key=pkey|--key pkey 源文件 加密后文件
+	xcp [-u] -d|--decrypt –k pkey|--key=pkey|--key pkey 加密文件 解密后文件
+	xcp -c|--check –k pkey|--key=pkey|--key pkey 文件或目录
 	xcp --md5sum 文件或目录
 
 在进行加密解密校验操作时，如果未指定密匙则采用工具默认密匙进行操作；
