@@ -1,8 +1,5 @@
 #include "os.h"
 #include "md5.h"
-#include <time.h>
-#include <errno.h>
-
 
 #if defined(XCP_WIN)
 #	define PATH_DIV '\\'
@@ -10,10 +7,12 @@
 #	define PATH_DIV '/'
 #endif
 
-
+// md5sum
 void MD5(const char *str, unsigned char digest[16]);
-int MD5_File(const char *filename, unsigned char digest[16], size_t offset, const unsigned char *head);
 void MD5_Str(const unsigned char digest[16], char str[33]);
+int MD5_File(const char *filename, unsigned char digest[16], size_t offset, 
+	const unsigned char *head, size_t headlen, 
+	const unsigned char *tail, size_t taillen);
 
 
 // get dir or filename(with extname) without PATH_DIV
@@ -38,6 +37,8 @@ void c2t(const char *str, TCHAR *tstr);
 void t2c(const TCHAR *tstr, char *str);
 // the parent dir must exists
 int createDir(const char *path);
+// delete file
+int deleteFile(const char *path);
 
 typedef struct
 {
@@ -58,6 +59,8 @@ typedef struct
 mode_t getMode(const char *path);
 // the parent dir must exists
 int createDir(const char *path, mode_t mode);
+// delete file
+int deleteFile(const char *path);
 
 typedef struct
 {
@@ -70,6 +73,7 @@ typedef struct
 #endif
 
 
+// Traversing files
 int X_findfirst(const char *path, X_DIR *xdir);
 int X_findnext(X_DIR *xdir);
 void X_findclose(X_DIR *xdir);

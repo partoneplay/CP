@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <errno.h>
 
 #define EXT_NAME ".cxc"
 #define BUF_SIZE 4096	// must be 16x
@@ -22,9 +24,10 @@
 #define X_NONE 0		// 0x00
 #define X_ENCRYPT 1 	// 0x01
 #define X_DECRYPT 2 	// 0x02
-#define X_CHECK 4		// 0x08
-#define X_MD5SUM 8		// 0x10
-#define X_UPDATE 16 	// 0x04
+#define X_CHECK 4		// 0x04
+#define X_MD5SUM 8		// 0x08
+#define X_UPDATE 16 	// 0x10
+#define X_VIEW 32 		// 0x20
 
 	
 /**

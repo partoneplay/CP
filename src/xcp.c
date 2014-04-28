@@ -37,12 +37,14 @@ int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *use
 			fwrite(buf, 16, 1, fout);
 		}
 		mod = readSize % 16;
+		mod = mod == 0 ? 16 : mod;	// 16x
 		memset(readBuf, 0, BUF_SIZE);
 	}
+	MD5_Update(&context, (unsigned char*)&mod, 1);
 	MD5_Final(&context, buf);
 	fseek(fout, 0, SEEK_SET);
 	fwrite(buf, 16, 1, fout);	// md5sum
-	fwrite(&mod, 1, 1, fout);	// filesize % 16
+	fwrite(&mod, 1, 1, fout);	// mod
 	fclose(fin);
 	fclose(fout);
 
@@ -53,16 +55,12 @@ int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *use
 {
 	AES_KEY key;
 	FILE *fin, *fout;
+	MD5Context context;
+	unsigned char digest[16 + 1] = "";
 	unsigned char buf[16 + 1] = "";
 	unsigned char readBuf[BUF_SIZE] = "";
 	size_t i, readSize = 0;
 	unsigned char mod = 0;
-
-	if (X_check(srcFile, userKey) == RET_NO)
-	{
-		fprintf(stderr, "'%s' Checksum Fail\n", srcFile);
-		return RET_NO;
-	}
 
 	fin = fopen(srcFile, "rb");
 	fout = fopen(newFile, "wb");
@@ -75,31 +73,45 @@ int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *use
 	}
 
 	AES_set_decrypt_key(userKey, 128, &key);
-	fread(buf, 16, 1, fin);
+	fread(digest, 16, 1, fin);
 	fread(&mod, 1, 1, fin);
+	MD5_Init(&context);
+	MD5_Update(&context, userKey, strlen((char*)userKey));
 	while ((readSize = fread(readBuf, 1, BUF_SIZE, fin)) > 0)
 	{
 		for (i = 0; i < readSize - 16; i += 16)
 		{
+			MD5_Update(&context, &readBuf[i], 16);
 			AES_decrypt(&readBuf[i], buf, &key);
 			fwrite(buf, 16, 1, fout);
 		}
+		MD5_Update(&context, &readBuf[i], 16);
 		AES_decrypt(&readBuf[i], buf, &key);
 		if (readSize < BUF_SIZE)
-			fwrite(buf, mod, 1, fout);
+			fwrite(buf, mod, 1, fout);	// relate to encrypt
 		else
 			fwrite(buf, 16, 1, fout);
 		memset(readBuf, 0, BUF_SIZE);
 	}
+	MD5_Update(&context, (unsigned char*)&mod, 1);
+	MD5_Final(&context, buf);
 	fclose(fin);
 	fclose(fout);
 
-	return RET_YES;
+	if (memcmp(digest,buf, 16) == 0)
+		return RET_YES;
+	else
+	{
+		deleteFile(newFile);
+		fprintf(stderr, "Check Fail : %s\n", srcFile);
+		return RET_NO;
+	}
 }
 
 int X_check(const char *filename, const unsigned char *userKey)
 {
 	FILE *file;
+	char mod = 0;
 	unsigned char buf[16] = "", digest[16] = "";
 
 	file = fopen(filename, "rb");
@@ -109,9 +121,10 @@ int X_check(const char *filename, const unsigned char *userKey)
 		return RET_ERROR;
 	}
 	fread(buf, 16, 1, file);
+	fread(&mod, 1, 1, file);
 	fclose(file);
 
-	MD5_File(filename, digest, 17, userKey);
+	MD5_File(filename, digest, 17, userKey, strlen(userKey), (unsigned char*)&mod, 1);
 	if (memcmp(buf, digest, 16) == 0)
 		return RET_YES;
 	else
@@ -159,7 +172,8 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 	ret = isDir(srcPath);
 	if (ret == RET_YES)
 	{
-		printf("Skip Folder '%s'\n", srcPath);
+		if (x_kind & X_VIEW)
+			printf("Skip Folder '%s'\n", srcPath);
 		return RET_SKIP;
 	}
 	else if (ret == RET_ERROR)
@@ -173,7 +187,7 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 	// generate the srcfile's md5sum
 	if (x_kind & X_MD5SUM)
 	{
-		MD5_File(srcPath, digest, 0, NULL);
+		MD5_File(srcPath, digest, 0, NULL, 0, NULL, 0);
 		MD5_Str(digest, md5);
 		printf("%s    %s\n", md5, srcPath);
 		return RET_YES;
@@ -234,14 +248,16 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 		ct_new = getLastUpdateTime(newFile);
 		if (ct_new >= ct_src)
 		{
-			printf("Skip  '%s'\n", srcPath);
+			if (x_kind & X_VIEW)
+				printf("Skip  '%s'\n", srcPath);
 			return RET_SKIP;
 		}
 	}
 
 	if (x_kind & X_ENCRYPT)
 	{
-		printf("Encrypt '%s' to '%s'\n", srcPath, newFile);
+		if (x_kind & X_VIEW)
+			printf("Encrypt '%s' to '%s'\n", srcPath, newFile);
 		ret = X_encrypt(srcPath, newFile, key);
 	}
 	else if (x_kind & X_DECRYPT)
@@ -250,12 +266,14 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 		if (strcmp(extName, EXT_NAME) != 0)
 			return RET_SKIP;
 
-		printf("Decrypt '%s' to '%s'\n", srcPath, newFile);
+		if (x_kind & X_VIEW)
+			printf("Decrypt '%s' to '%s'\n", srcPath, newFile);
 		ret = X_decrypt(srcPath, newFile, key);
 	}
 	else
 	{
-		printf("Copy '%s' to '%s'\n", srcPath, newFile);
+		if (x_kind & X_VIEW)
+			printf("Copy '%s' to '%s'\n", srcPath, newFile);
 		ret = X_copy(srcPath, newFile);
 	}
 #if defined(XCP_WIN)
@@ -354,6 +372,8 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 		}
 		else if (ret == RET_NO)
 			xcpFile(srcFile, destBase, x_kind, pkey);
+
+		ret = X_findnext(&xdir);
 	}
 	X_findclose(&xdir);
 	return RET_YES;

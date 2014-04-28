@@ -8,7 +8,9 @@ void MD5(const char *str, unsigned char digest[16])
 	MD5_Final(&context, digest);
 }
 
-int MD5_File(const char *filename, unsigned char digest[16], size_t offset, const unsigned char *head)
+int MD5_File(const char *filename, unsigned char digest[16], size_t offset,
+	const unsigned char *head, size_t headlen,
+	const unsigned char *tail, size_t taillen)
 {
 	FILE *file;
 	MD5Context context;
@@ -21,12 +23,16 @@ int MD5_File(const char *filename, unsigned char digest[16], size_t offset, cons
 	MD5_Init(&context);
 	
 	if (head != NULL)
-		MD5_Update(&context, head, strlen((char*)head));
+		MD5_Update(&context, head, headlen);
 
 	fseek(file, offset, SEEK_SET);
 	while ((readSize = fread(readBuf, 1, BUF_SIZE, file)) > 0)
 		MD5_Update(&context, readBuf, readSize);
 	fclose(file);
+
+	if (tail != NULL)
+		MD5_Update(&context, tail, taillen);
+
 	MD5_Final(&context, digest);
 	
 	return RET_YES;
@@ -170,6 +176,16 @@ int createDir(const char *path)
 	return RET_YES;
 }
 
+int deleteFile(const char *path)
+{
+	TCHAR path_t[PATH_MAX];
+	c2t(path, path_t);
+	if (DeleteFile(path_t))
+		return RET_YES;
+	else
+		return RET_NO;
+}
+
 int X_findfirst(const char *path, X_DIR *xdir)
 {
 	int len = 0;
@@ -228,6 +244,14 @@ int createDir(const char *path, mode_t mode)
 			return RET_ERROR;
 	}
 	return RET_YES;
+}
+
+int deleteFile(const char *path)
+{
+	if (unlink(path) == 0)
+		return RET_YES;
+	else
+		return RET_NO;
 }
 
 int X_findfirst(const char *path, X_DIR *xdir)
