@@ -267,7 +267,7 @@ int X_findfirst(const char *path, X_DIR *xdir)
 	if (xdir->pdt == NULL)
 		return RET_END;
 
-	strcpy(xdir->name, pdt->d_name)
+	strcpy(xdir->name, xdir->pdt->d_name);
 	return RET_YES;
 }
 
@@ -280,7 +280,7 @@ int X_findnext(X_DIR *xdir)
 	if (xdir->pdt == NULL)
 		return RET_END;
 
-	strcpy(xdir->name, pdt->d_name)
+	strcpy(xdir->name, xdir->pdt->d_name);
 	return RET_YES;
 }
 

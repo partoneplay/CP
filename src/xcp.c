@@ -59,7 +59,7 @@ int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *use
 	unsigned char digest[16 + 1] = "";
 	unsigned char buf[16 + 1] = "";
 	unsigned char readBuf[BUF_SIZE] = "";
-	size_t i, readSize = 0;
+	size_t i, readSize = 0, lastSize = 0;
 	unsigned char mod = 0;
 
 	fin = fopen(srcFile, "rb");
@@ -77,7 +77,8 @@ int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *use
 	fread(&mod, 1, 1, fin);
 	MD5_Init(&context);
 	MD5_Update(&context, userKey, strlen((char*)userKey));
-	while ((readSize = fread(readBuf, 1, BUF_SIZE, fin)) > 0)
+	readSize = fread(readBuf, 1, BUF_SIZE, fin);
+	while (readSize > 0)
 	{
 		for (i = 0; i < readSize - 16; i += 16)
 		{
@@ -87,11 +88,15 @@ int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *use
 		}
 		MD5_Update(&context, &readBuf[i], 16);
 		AES_decrypt(&readBuf[i], buf, &key);
-		if (readSize < BUF_SIZE)
+
+		lastSize = readSize;
+		memset(readBuf, 0, BUF_SIZE);
+		readSize = fread(readBuf, 1, BUF_SIZE, fin);
+		
+		if (lastSize < BUF_SIZE || readSize == 0)
 			fwrite(buf, mod, 1, fout);	// relate to encrypt
 		else
 			fwrite(buf, 16, 1, fout);
-		memset(readBuf, 0, BUF_SIZE);
 	}
 	MD5_Update(&context, (unsigned char*)&mod, 1);
 	MD5_Final(&context, buf);
