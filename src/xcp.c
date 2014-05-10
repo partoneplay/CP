@@ -1,14 +1,19 @@
 #include "xcp.h"
-#include "aes.h"
+#include "crypt.h"
 #include "md5.h"
 #include "func.h"
 
-int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *userKey)
+int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *userKey,
+	size_t grouplen,
+	void(*crypt_set_encrypt_key)(const char *pkey, CRYPT_KEY *key),
+	void(*crypt_freekey)(CRYPT_KEY key),
+	void(*crypt_encrypt)(unsigned char *in, unsigned char *out, const CRYPT_KEY key)
+)
 {
-	AES_KEY key;
+	CRYPT_KEY key = NULL;
 	FILE *fin, *fout;
 	MD5Context context;
-	unsigned char buf[16 + 1] = "";
+	unsigned char *groupBuf = (unsigned char*)malloc(grouplen);
 	unsigned char readBuf[BUF_SIZE] = "";
 	size_t i, readSize = 0;
 	unsigned char mod = 0;
@@ -23,27 +28,28 @@ int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *use
 		return RET_ERROR;
 	}
 
-	AES_set_encrypt_key(userKey, 128, &key);
-	memset(buf, 0, 17);
-	fwrite(buf, 17, 1, fout);	// file head
+	(*crypt_set_encrypt_key)(userKey, &key);
+	memset(readBuf, 0, 17);
+	fwrite(readBuf, 17, 1, fout);	// file head
 	MD5_Init(&context);
 	MD5_Update(&context, userKey, strlen((char*)userKey));
 	while ((readSize = fread(readBuf, 1, BUF_SIZE, fin)) > 0)
 	{
-		for (i = 0; i < readSize; i += 16)
+		for (i = 0; i < readSize; i += grouplen)
 		{
-			AES_encrypt(&readBuf[i], buf, &key);
-			MD5_Update(&context, buf, 16);
-			fwrite(buf, 16, 1, fout);
+			(*crypt_encrypt)(&readBuf[i], groupBuf, key);
+			MD5_Update(&context, groupBuf, grouplen);
+			fwrite(groupBuf, grouplen, 1, fout);
 		}
-		mod = readSize % 16;
-		mod = mod == 0 ? 16 : mod;	// 16x
+		mod = readSize % grouplen;
+		mod = mod == 0 ? grouplen : mod;	// 16x
 		memset(readBuf, 0, BUF_SIZE);
 	}
+	(*crypt_freekey)(key);
 	MD5_Update(&context, (unsigned char*)&mod, 1);
-	MD5_Final(&context, buf);
+	MD5_Final(&context, readBuf);
 	fseek(fout, 0, SEEK_SET);
-	fwrite(buf, 16, 1, fout);	// md5sum
+	fwrite(readBuf, 16, 1, fout);	// md5sum
 	fwrite(&mod, 1, 1, fout);	// mod
 	fclose(fin);
 	fclose(fout);
@@ -51,13 +57,18 @@ int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *use
 	return RET_YES;
 }
 
-int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *userKey)
+int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *userKey,
+	size_t grouplen,
+	void(*crypt_set_decrypt_key)(const char *pkey, CRYPT_KEY *key),
+	void(*crypt_freekey)(CRYPT_KEY key),
+	void(*crypt_decrypt)(unsigned char *in, unsigned char *out, const CRYPT_KEY key)
+)
 {
-	AES_KEY key;
+	CRYPT_KEY key = NULL;
 	FILE *fin, *fout;
 	MD5Context context;
 	unsigned char digest[16 + 1] = "";
-	unsigned char buf[16 + 1] = "";
+	unsigned char *groupBuf = (unsigned char*)malloc(grouplen);
 	unsigned char readBuf[BUF_SIZE] = "";
 	size_t i, readSize = 0, lastSize = 0;
 	unsigned char mod = 0;
@@ -72,7 +83,7 @@ int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *use
 		return RET_ERROR;
 	}
 
-	AES_set_decrypt_key(userKey, 128, &key);
+	(*crypt_set_decrypt_key)(userKey, &key);
 	fread(digest, 16, 1, fin);
 	fread(&mod, 1, 1, fin);
 	MD5_Init(&context);
@@ -80,30 +91,31 @@ int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *use
 	readSize = fread(readBuf, 1, BUF_SIZE, fin);
 	while (readSize > 0)
 	{
-		for (i = 0; i < readSize - 16; i += 16)
+		for (i = 0; i < readSize - grouplen; i += grouplen)
 		{
-			MD5_Update(&context, &readBuf[i], 16);
-			AES_decrypt(&readBuf[i], buf, &key);
-			fwrite(buf, 16, 1, fout);
+			MD5_Update(&context, &readBuf[i], grouplen);
+			(*crypt_decrypt)(&readBuf[i], groupBuf, key);
+			fwrite(groupBuf, grouplen, 1, fout);
 		}
-		MD5_Update(&context, &readBuf[i], 16);
-		AES_decrypt(&readBuf[i], buf, &key);
+		MD5_Update(&context, &readBuf[i], grouplen);
+		(*crypt_decrypt)(&readBuf[i], groupBuf, key);
 
 		lastSize = readSize;
 		memset(readBuf, 0, BUF_SIZE);
 		readSize = fread(readBuf, 1, BUF_SIZE, fin);
 		
 		if (lastSize < BUF_SIZE || readSize == 0)
-			fwrite(buf, mod, 1, fout);	// relate to encrypt
+			fwrite(groupBuf, mod, 1, fout);	// relate to encrypt
 		else
-			fwrite(buf, 16, 1, fout);
+			fwrite(groupBuf, grouplen, 1, fout);
 	}
+	(*crypt_freekey)(key);
 	MD5_Update(&context, (unsigned char*)&mod, 1);
-	MD5_Final(&context, buf);
+	MD5_Final(&context, groupBuf);
 	fclose(fin);
 	fclose(fout);
 
-	if (memcmp(digest,buf, 16) == 0)
+	if (memcmp(digest, groupBuf, 16) == 0)
 		return RET_YES;
 	else
 	{
@@ -164,7 +176,7 @@ int X_copy(const char *srcFile, const char *newFile)
 }
 
 
-int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigned char *key)
+int xcpFile(const char *srcPath, const char *destPath, int x_kind, int x_crypt, const unsigned char *key)
 {
 	int ret = 0;
 	size_t len;
@@ -172,6 +184,13 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 	char fileName[NAME_MAX] = "", extName[NAME_MAX] = "", newFile[PATH_MAX] = "";
 	char *tmp, md5[33];
 	unsigned char digest[16];
+
+	void *set_encrypt_key = aes_set_encrypt_key;
+	void *set_decrypt_key = aes_set_decrypt_key;
+	void *freekey = aes_freekey;
+	void *encrypt = aes_encrypt;
+	void *decrypt = aes_decrypt;
+	size_t grouplen = 16;
 
 	// srcpath must not be a Dir
 	ret = isDir(srcPath);
@@ -259,11 +278,26 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 		}
 	}
 
+	switch (x_crypt)
+	{
+	case CRYPT_DES:
+		set_encrypt_key = des_set_encrypt_key;
+		set_decrypt_key = des_set_decrypt_key;
+		freekey = des_freekey;
+		encrypt = des_encrypt;
+		decrypt = des_decrypt;
+		grouplen = 8;
+		break;
+	case CRYPT_AES:
+	default:
+		break;
+	}
+
 	if (x_kind & X_ENCRYPT)
 	{
 		if (x_kind & X_VIEW)
 			printf("Encrypt '%s' to '%s'\n", srcPath, newFile);
-		ret = X_encrypt(srcPath, newFile, key);
+		ret = X_encrypt(srcPath, newFile, key, grouplen, set_encrypt_key, freekey, encrypt);
 	}
 	else if (x_kind & X_DECRYPT)
 	{
@@ -273,7 +307,7 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 
 		if (x_kind & X_VIEW)
 			printf("Decrypt '%s' to '%s'\n", srcPath, newFile);
-		ret = X_decrypt(srcPath, newFile, key);
+		ret = X_decrypt(srcPath, newFile, key, grouplen, set_decrypt_key, freekey, decrypt);
 	}
 	else
 	{
@@ -290,7 +324,7 @@ int xcpFile(const char *srcPath, const char *destPath, int x_kind, const unsigne
 }
 
 
-int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned char *pkey)
+int xcp(const char *srcPath, const char *destPath, int x_kind, int x_crypt, const unsigned char *pkey)
 {
 	X_DIR xdir;
 	
@@ -302,7 +336,7 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 
 	ret = isDir(srcPath);
 	if (ret == RET_NO)
-		return xcpFile(srcPath, destPath, x_kind, pkey);	
+		return xcpFile(srcPath, destPath, x_kind, x_crypt, pkey);	
 	else if (ret == RET_ERROR)
 		return RET_ERROR;
 	getName(srcPath, dirName);
@@ -326,10 +360,10 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 			if (ret == RET_YES)
 			{
 				if (strcmp(xdir.name, ".") != 0 && strcmp(xdir.name, "..") != 0)
-					xcp(srcFile, NULL, x_kind, pkey);
+					xcp(srcFile, NULL, x_kind, x_crypt, pkey);
 			}
 			else if (ret == RET_NO)
-				xcpFile(srcFile, NULL, x_kind, pkey);
+				xcpFile(srcFile, NULL, x_kind, x_crypt, pkey);
 
 			ret = X_findnext(&xdir);
 		}
@@ -373,10 +407,10 @@ int xcp(const char *srcPath, const char *destPath, int x_kind, const unsigned ch
 		if (ret == RET_YES)
 		{
 			if (strcmp(xdir.name, ".") != 0 && strcmp(xdir.name, "..") != 0)
-				xcp(srcFile, destFile, x_kind, pkey);
+				xcp(srcFile, destFile, x_kind, x_crypt, pkey);
 		}
 		else if (ret == RET_NO)
-			xcpFile(srcFile, destBase, x_kind, pkey);
+			xcpFile(srcFile, destBase, x_kind, x_crypt, pkey);
 
 		ret = X_findnext(&xdir);
 	}

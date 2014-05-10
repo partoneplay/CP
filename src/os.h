@@ -29,6 +29,9 @@
 #define X_UPDATE 16 	// 0x10
 #define X_VIEW 32 		// 0x20
 
+#define CRYPT_AES 1
+#define CRYPT_DES 2
+
 	
 /**
 	The operating system, must be one of: (OS_x)

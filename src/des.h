@@ -1,7 +1,13 @@
 #ifndef DES_H
 #define DES_H
 
-void Des_Run(char out[8], char in[8], char kind);
-void Des_SetKey(const char pkey[8]);
+typedef struct
+{
+	unsigned char key[16][48];
+} DES_KEY;
+
+void DES_set_key(const unsigned char *pkey, DES_KEY *key);
+void DES_encrypt(unsigned char *in, unsigned char *out, const DES_KEY *key);
+void DES_decrypt(unsigned char *in, unsigned char *out, const DES_KEY *key);
 
 #endif

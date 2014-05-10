@@ -19,21 +19,22 @@ int main(int argc, char **argv)
 #endif
 
 	int opt, i;
-	int x_kind = X_NONE, x_update = X_NONE, x_view = X_NONE;
+	int x_kind = X_NONE, x_update = X_NONE, x_view = X_NONE, x_crypt = CRYPT_AES;
 	int pathnum = 0;
 	const char **path = (const char **)malloc(argc * sizeof(char*));
 	unsigned char digest[16] = "pkey";
 	unsigned char pkey[33] = "pkey";
-	char* const short_options = "vuedcmk:";
+	char* const short_options = "vuedcmk:a:";
 	struct option long_options[] = {
-		{ "view", no_argument, NULL, 'v' },
-		{ "update", no_argument, NULL, 'u' },
-		{ "encrypt", no_argument, NULL, 'e' },
-		{ "decrypt", no_argument, NULL, 'd' },
-		{ "check", no_argument, NULL, 'c' },
-		{ "md5sum", no_argument, NULL, 'm' },
-		{ "key", required_argument, NULL, 'k' },
-		{ 0, 0, 0, 0 }
+		{"view", no_argument, NULL, 'v'},
+		{"update", no_argument, NULL, 'u'},
+		{"encrypt", no_argument, NULL, 'e'},
+		{"decrypt", no_argument, NULL, 'd'},
+		{"check", no_argument, NULL, 'c'},
+		{"md5sum", no_argument, NULL, 'm'},
+		{"key", required_argument, NULL, 'k'},
+		{"algorithm", required_argument, NULL, 'a'},
+		{0, 0, 0, 0 }
 	};
 
 	while ((opt = getopt_long(argc, argv, short_options, long_options, NULL)) != -1)
@@ -62,6 +63,12 @@ int main(int argc, char **argv)
 			MD5(optarg, digest);
 			MD5_Str(digest, pkey);
 			break;
+		case 'a':
+			if (strcmp(optarg, "aes") == 0)
+				x_crypt = CRYPT_AES;
+			else if (strcmp(optarg, "des") == 0)
+				x_crypt = CRYPT_DES;
+			break;
 		default:
 			fprintf(stderr, "Bad Option\n");
 			break;
@@ -83,14 +90,14 @@ int main(int argc, char **argv)
 		{
 			c2t(path[i], tmp_t);
 			if (PathIsDirectory(tmp_t))
-				xcp(path[i], NULL, x_kind, pkey);
+				xcp(path[i], NULL, x_kind, x_crypt, pkey);
 			else
 			{
 				hFind = FindFirstFile(tmp_t, &fd);
 				while (hFind != INVALID_HANDLE_VALUE)
 				{
 					t2c(fd.cFileName, tmp);
-					xcp(tmp, NULL, x_kind, pkey);
+					xcp(tmp, NULL, x_kind, x_crypt, pkey);
 					if (!FindNextFile(hFind, &fd))
 					{
 						FindClose(hFind);
@@ -106,14 +113,14 @@ int main(int argc, char **argv)
 		{
 			c2t(path[i], tmp_t);
 			if (PathIsDirectory(tmp_t))
-				xcp(path[i], path[pathnum - 1], x_kind, pkey);
+				xcp(path[i], path[pathnum - 1], x_kind, x_crypt, pkey);
 			else
 			{
 				hFind = FindFirstFile(tmp_t, &fd);
 				while (hFind != INVALID_HANDLE_VALUE)
 				{
 					t2c(fd.cFileName, tmp);
-					xcp(tmp, path[pathnum - 1], x_kind, pkey);
+					xcp(tmp, path[pathnum - 1], x_kind, x_crypt, pkey);
 					if (!FindNextFile(hFind, &fd))
 					{
 						FindClose(hFind);
@@ -126,13 +133,13 @@ int main(int argc, char **argv)
 #else
 	if (x_kind & X_CHECK || x_kind & X_MD5SUM)
 		for (i = 0; i < pathnum; ++i)
-			xcp(path[i], NULL, x_kind, pkey);
+			xcp(path[i], NULL, x_kind, x_crypt, pkey);
 	else if (pathnum >= 2)
 		for (i = 0; i < pathnum - 1; ++i)
-			xcp(path[i], path[pathnum - 1], x_kind, pkey);
+			xcp(path[i], path[pathnum - 1], x_kind, x_crypt, pkey);
 #endif
 	else
 		fprintf(stderr, "Missing Dest Fold!\n");
-	
+
 	return 0;
 }
