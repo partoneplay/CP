@@ -30,26 +30,29 @@ int X_encrypt(const char *srcFile, const char *newFile, const unsigned char *use
 
 	(*crypt_set_encrypt_key)(userKey, &key);
 	memset(readBuf, 0, 17);
-	fwrite(readBuf, 17, 1, fout);	// file head
+	fwrite(readBuf, 1, 17, fout);	// file head
 	MD5_Init(&context);
 	MD5_Update(&context, userKey, strlen((char*)userKey));
 	while ((readSize = fread(readBuf, 1, BUF_SIZE, fin)) > 0)
 	{
 		for (i = 0; i < readSize; i += grouplen)
 		{
-			(*crypt_encrypt)(&readBuf[i], groupBuf, key);
-			MD5_Update(&context, groupBuf, grouplen);
-			fwrite(groupBuf, grouplen, 1, fout);
+			(*crypt_encrypt)(&readBuf[i], &readBuf[i], key);
+			MD5_Update(&context, &readBuf[i], grouplen);
+		//	(*crypt_encrypt)(&readBuf[i], groupBuf, key);
+		//	MD5_Update(&context, groupBuf, grouplen);
+		//	fwrite(groupBuf, grouplen, 1, fout);
 		}
+		fwrite(readBuf, 1, i, fout);
 		mod = readSize % grouplen;
-		mod = mod == 0 ? grouplen : mod;	// 16x
+		mod = mod == 0 ? grouplen : mod;	// x
 		memset(readBuf, 0, BUF_SIZE);
 	}
 	(*crypt_freekey)(key);
 	MD5_Update(&context, (unsigned char*)&mod, 1);
 	MD5_Final(&context, readBuf);
 	fseek(fout, 0, SEEK_SET);
-	fwrite(readBuf, 16, 1, fout);	// md5sum
+	fwrite(readBuf, 1, 16, fout);	// md5sum
 	fwrite(&mod, 1, 1, fout);	// mod
 	fclose(fin);
 	fclose(fout);
@@ -84,7 +87,7 @@ int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *use
 	}
 
 	(*crypt_set_decrypt_key)(userKey, &key);
-	fread(digest, 16, 1, fin);
+	fread(digest, 1, 16, fin);
 	fread(&mod, 1, 1, fin);
 	MD5_Init(&context);
 	MD5_Update(&context, userKey, strlen((char*)userKey));
@@ -94,9 +97,13 @@ int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *use
 		for (i = 0; i < readSize - grouplen; i += grouplen)
 		{
 			MD5_Update(&context, &readBuf[i], grouplen);
-			(*crypt_decrypt)(&readBuf[i], groupBuf, key);
-			fwrite(groupBuf, grouplen, 1, fout);
+			(*crypt_decrypt)(&readBuf[i], &readBuf[i], key);
+		//	(*crypt_decrypt)(&readBuf[i], groupBuf, key);
+		//	fwrite(groupBuf, grouplen, 1, fout);
 		}
+		if (readSize > grouplen)
+			fwrite(readBuf, 1, readSize - grouplen, fout);
+		
 		MD5_Update(&context, &readBuf[i], grouplen);
 		(*crypt_decrypt)(&readBuf[i], groupBuf, key);
 
@@ -105,9 +112,9 @@ int X_decrypt(const char *srcFile, const char *newFile, const unsigned char *use
 		readSize = fread(readBuf, 1, BUF_SIZE, fin);
 		
 		if (lastSize < BUF_SIZE || readSize == 0)
-			fwrite(groupBuf, mod, 1, fout);	// relate to encrypt
+			fwrite(groupBuf, 1, mod, fout);	// relate to encrypt
 		else
-			fwrite(groupBuf, grouplen, 1, fout);
+			fwrite(groupBuf, 1, grouplen, fout);
 	}
 	(*crypt_freekey)(key);
 	MD5_Update(&context, (unsigned char*)&mod, 1);
@@ -137,7 +144,7 @@ int X_check(const char *filename, const unsigned char *userKey)
 		fprintf(stderr, "Read File Error, Fail to check '%s'\n", filename);
 		return RET_ERROR;
 	}
-	fread(buf, 16, 1, file);
+	fread(buf, 1, 16, file);
 	fread(&mod, 1, 1, file);
 	fclose(file);
 
@@ -166,7 +173,7 @@ int X_copy(const char *srcFile, const char *newFile)
 
 	while ((readSize = fread(readBuf, 1, BUF_SIZE, fin)) > 0)
 	{
-		fwrite(readBuf, readSize, 1, fout);
+		fwrite(readBuf, 1, readSize, fout);
 		memset(readBuf, 0, BUF_SIZE);
 	}
 	fclose(fin);
