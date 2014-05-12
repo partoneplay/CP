@@ -90,7 +90,8 @@ const unsigned char S_Box[8][4][16] = {
 
 void ByteToBit(unsigned char *Out, const unsigned char *In, int bits)
 {
-	for (int i = 0; i < bits; i++)
+	int i = 0;
+	for (i = 0; i < bits; i++)
 	{
 		Out[i] = (In[i / 8] >> (i % 8)) & 1;
 	}
@@ -98,8 +99,9 @@ void ByteToBit(unsigned char *Out, const unsigned char *In, int bits)
 
 void BitToByte(unsigned char *Out, const unsigned char *In, int bits)
 {
+	int i = 0;
 	memset(Out, 0, (bits + 7) / 8);
-	for (int i = 0; i < bits; i++)
+	for (i = 0; i < bits; i++)
 	{
 		Out[i / 8] |= In[i] << (i % 8);
 	}
@@ -108,7 +110,8 @@ void BitToByte(unsigned char *Out, const unsigned char *In, int bits)
 void Transform(unsigned char *Out, unsigned char *In, const unsigned char *Table, int len)
 {
 	unsigned char Tmp[256];
-	for (int i = 0; i < len; i++)
+	int i = 0;
+	for (i = 0; i < len; i++)
 	{
 		Tmp[i] = In[Table[i] - 1];
 	}
@@ -117,7 +120,8 @@ void Transform(unsigned char *Out, unsigned char *In, const unsigned char *Table
 
 void Xor(unsigned char *InA, const unsigned char *InB, int len)
 {
-	for (int i = 0; i < len; i++)
+	int i = 0;
+	for (i = 0; i < len; i++)
 	{
 		InA[i] ^= InB[i];
 	}
@@ -125,7 +129,8 @@ void Xor(unsigned char *InA, const unsigned char *InB, int len)
 
 void S_func(unsigned char Out[32], const unsigned char In[48])
 {
-	for (unsigned char i = 0, j, k; i<8; i++, In += 6, Out += 4)
+	unsigned char i = 0, j = 0, k = 0;
+	for (i = 0, j = 0, k = 0; i < 8; i++, In += 6, Out += 4)
 	{
 		j = (In[0] << 1) + In[5];
 		k = (In[1] << 3) + (In[2] << 2) + (In[3] << 1) + In[4];
@@ -153,10 +158,11 @@ void RotateL(unsigned char *In, int len, int loop)
 
 void DES_set_key(const unsigned char *pkey, DES_KEY *key)
 {
+	int i = 0;
 	unsigned char K[64], *KL = &K[0], *KR = &K[28];
 	ByteToBit(K, pkey, 64);
 	Transform(K, K, PC1_Table, 56);
-	for (int i = 0; i<16; i++)
+	for (i = 0; i<16; i++)
 	{
 		RotateL(KL, 28, LOOP_Table[i]);
 		RotateL(KR, 28, LOOP_Table[i]);
@@ -166,10 +172,11 @@ void DES_set_key(const unsigned char *pkey, DES_KEY *key)
 
 void DES_encrypt(unsigned char *in, unsigned char *out, const DES_KEY *key)
 {
+	int i = 0;
 	unsigned char M[64], Tmp[32], *Li = &M[0], *Ri = &M[32];
 	ByteToBit(M, in, 64);
 	Transform(M, M, IP_Table, 64);
-	for (int i = 0; i<16; i++)
+	for (i = 0; i<16; i++)
 	{
 		memcpy(Tmp, Ri, 32);
 		F_func(Ri, key->key[i]);
@@ -182,10 +189,11 @@ void DES_encrypt(unsigned char *in, unsigned char *out, const DES_KEY *key)
 
 void DES_decrypt(unsigned char *in, unsigned char *out, const DES_KEY *key)
 {
+	int i = 0;
 	unsigned char M[64], Tmp[32], *Li = &M[0], *Ri = &M[32];
 	ByteToBit(M, in, 64);
 	Transform(M, M, IP_Table, 64);
-	for (int i = 15; i >= 0; i--)
+	for (i = 15; i >= 0; i--)
 	{
 		memcpy(Tmp, Li, 32);
 		F_func(Li, key->key[i]);

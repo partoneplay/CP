@@ -1,8 +1,8 @@
 all:
-	gcc main.c xcp.c func.c aes.c md5.c winopt.c -o xcp
+	gcc *.c *.h -o xcp
 
 test:
-	gcc main.c xcp.c func.c aes.c md5.c winopt.c -o xcp
+	gcc *.c *.h -o xcp
 	sh maketest.sh
 
 clean:
