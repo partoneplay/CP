@@ -2,82 +2,85 @@
 # File Name: test.sh
 # Author: ma6174
 # mail: ma6174@163.com
-# Created Time: 2014年04月12日 星期六 00时52分08秒
+# Created Time: 2014年04月27日 星期日 20时00分56秒
 #########################################################################
 #!/bin/bash
 
-echo "generate test files '10M','100M', and folder 'test'"
-if [ ! -d "test" ]; then
-	mkdir "test"
+if [ ! -f "xcp" ]; then
+	echo "Please run 'make' first"
+	exit
 fi
-cp xcp test/xcp
+
+mkdir test 2>/dev/null
+cp xcp test/
 cd test
-dd if=/dev/zero of=10M bs=1K count=10000
-dd if=/dev/zero of=100M bs=1K count=10000
 
-echo ""
-# test copy files
-echo "test copy"
+# 准备测试数据
+echo "Preparing test data ... "
+dd if=/dev/zero of="file 1M" bs=1K count=1000 2>/dev/null
+dd if=/dev/zero of="file 10M" bs=1K count=10000 2>/dev/null
 
-./xcp 10M 10M.copy
-cmp 10M 10M.copy
-if [ $? = 0 ]; then
-	echo "copy right"
-else
-	echo "copy wrong!"
+mkdir s 2>/dev/null
+cp -r /usr/share/s* s
+mkdir "s/blank blank" 2>/dev/null
+mv "file 1M" "s/blank blank"
+mv "file 10M" "s/blank blank"
+echo "Prepare data done ."
+
+
+# 普通拷贝测试
+echo "generate md5sum code"
+cp -r s s_cp 1>/dev/null
+./xcp -m s_cp 1>a
+rm -rf s_cp
+echo "compare md5sum code"
+./xcp s s_cp 1>/dev/null
+./xcp -m s_cp 1>b
+rm -rf s_cp
+
+sort a b 1>/dev/null
+cmp a b 1>/dev/null
+if [ $? != 0 ]; then
+	echo "Test Copy fail"
 	exit
 fi
-./xcp 100M 100M.copy
-cmp 100M 100M.copy
-if [ $? = 0 ]; then
-	echo "copy right"
-else
-	echo "copy wrong"
+echo "Test Copy OK"
+rm a b
+ 
+
+# 加密解密测试
+echo "generate source files md5sum code"
+cp -r s s_crypt 1>/dev/null
+./xcp -m s_crypt 1>a
+
+echo "encrypt files ..."
+./xcp -e -k 123 s_crypt s_crypted 1>/dev/null
+rm -rf s_crypt
+echo "decrypt files ..."
+./xcp -d -k 123 s_crypted s_crypt 1>/dev/null
+rm -rf s_crypted
+
+echo "generate decrypted files md5sum code"
+./xcp -m s_crypt 1>b
+rm -rf s_crypt
+
+echo "compare md5sum code"
+sort a b 1>/dev/null
+cmp a b 1>/dev/null
+if [ $? != 0 ]; then
+	echo "Crypt fail"
 	exit
 fi
+echo "Test Crypt OK"
+rm a b
 
-echo ""
-echo "test update copy"
-./xcp --update 10M 10M.copy
-echo "touch 100M"
-sleep 1
-touch 100M
-./xcp --update 100M 100M.copy
 
-echo ""
-#test encrypt function
-./xcp --encrypt --key=123 10M 10M.cxc
-./xcp --encrypt --key=123 100M 100M.cxc
 
-echo ""
-# test check function
-./xcp --check --key=123 10M.cxc 100M.cxc
-echo "use wrong key test"
-./xcp --check --key=wrong_key 10M.cxc 100M.cxc
-echo "change 10M.cxc to _10M.cxc, 100M.cxc to _100M.cxc"
-cp 10M.cxc _10M.cxc
-who >> _10M.cxc
-cp 100M.cxc _100M.cxc
-who >> _100M.cxc
-./xcp --check --key=123 _10M.cxc _100M.cxc
-
-echo ""
-# test decrypt function
-./xcp --decrypt --key=123 10M.cxc _10M
-cmp 10M _10M
-if [ $? = 0 ]; then
-	echo "crypt right"
-else
-	echo "crypt wrong"
-	exit
-fi
-./xcp --decrypt --key=123 100M.cxc _100M
-cmp 100M _100M
-if [ $? = 0 ]; then
-	echo "crypt right"
-else
-	echo "crypt wrong"
-	exit
-fi
+#
+#
+#
+#
+#
 
 echo "complete"
+
